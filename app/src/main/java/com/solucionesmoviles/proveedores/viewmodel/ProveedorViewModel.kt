@@ -3,6 +3,9 @@ package com.solucionesmoviles.proveedores.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.solucionesmoviles.proveedores.data.AppDatabase
 import com.solucionesmoviles.proveedores.data.UserPreferencesRepository
 import com.solucionesmoviles.proveedores.model.Categoria
@@ -27,7 +30,7 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
     private val paisDao = db.paisDao()
     private val categoriaDao = db.categoriaDao()
 
-    // --- NUEVO: PREFERENCIAS DE TEMA (Esto arregla el error en AjustesScreen) ---
+    // --- NUEVO: PREFERENCIAS DE TEMA ---
     private val userPreferences = UserPreferencesRepository(application)
 
     // Estado del tema que observa la pantalla de Ajustes
@@ -40,6 +43,34 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
             userPreferences.saveDarkMode(isDark)
         }
     }
+
+    // --- NUEVO: VARIABLES TEMPORALES PARA EL FORMULARIO (Persistencia al navegar) ---
+    // Usamos mutableStateOf de Compose para que la UI se actualice sola
+    var nombreFormulario by androidx.compose.runtime.mutableStateOf("")
+    var rucFormulario by androidx.compose.runtime.mutableStateOf("")
+    var tipoFormulario by androidx.compose.runtime.mutableStateOf("Nacional")
+
+    // Control para saber si ya cargamos los datos de un ID específico (evita recargas innecesarias)
+    var formularioCargadoId by androidx.compose.runtime.mutableStateOf<Int?>(null)
+
+    // Función para limpiar (Cuando das click a "Nuevo")
+    fun limpiarFormulario() {
+        nombreFormulario = ""
+        rucFormulario = ""
+        tipoFormulario = "Nacional"
+        formularioCargadoId = null
+    }
+
+    // Función para cargar datos de edición (Solo si no están cargados ya)
+    fun cargarDatosParaEdicion(id: Int, proveedor: Proveedor) {
+        if (formularioCargadoId != id) {
+            nombreFormulario = proveedor.nombre
+            rucFormulario = proveedor.ruc
+            tipoFormulario = proveedor.tipoProveedor
+            formularioCargadoId = id
+        }
+    }
+
     // --------------------------------------------------
     // 2. Estados de la UI (Buscador y Ordenamiento)
     private val _searchQuery = MutableStateFlow("")
@@ -58,12 +89,16 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
     }.flatMapLatest { (query, porNombre) ->
         // A. Buscamos en BD según el texto
         proveedorDao.buscarProveedores(query).map { lista ->
-            // B. Ordenamos en memoria según la preferencia del usuario
-            if (porNombre) {
+            // 1. Primero ordenamos por Nombre o RUC (según lo que elija el usuario)
+            val listaOrdenada = if (porNombre) {
                 lista.sortedBy { it.nombre }
             } else {
                 lista.sortedBy { it.ruc }
             }
+
+            // 2. LUEGO volvemos a ordenar para mandar los eliminados (*) al final.
+            // false va antes que true, por lo tanto los activos van antes que los eliminados
+            listaOrdenada.sortedBy { it.estado == "*" }
         }
     }
 
@@ -176,4 +211,13 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     suspend fun getCategoriaById(id: Int): Categoria? = categoriaDao.getById(id)
+
+    // VALIDACIONES DE INTEGRIDAD
+    suspend fun puedeInactivarPais(id: Int): Boolean {
+        return proveedorDao.contarPorPais(id) == 0
+    }
+
+    suspend fun puedeInactivarCategoria(id: Int): Boolean {
+        return proveedorDao.contarPorCategoria(id) == 0
+    }
 }

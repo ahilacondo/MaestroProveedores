@@ -69,4 +69,12 @@ interface ProveedorDao {
     // Validación: Verificar si ya existe un RUC (Regla de negocio)
     @Query("SELECT COUNT(*) FROM proveedores WHERE ruc = :ruc")
     suspend fun existeRuc(ruc: String): Int
+
+    // Validar si un país está siendo usado por algún proveedor activo o inactivo (no eliminado)
+    @Query("SELECT COUNT(*) FROM proveedores WHERE paisId = :paisId AND estado != '*'")
+    suspend fun contarPorPais(paisId: Int): Int
+
+    // Validar si una categoría está siendo usada
+    @Query("SELECT COUNT(*) FROM proveedores WHERE categoriaId = :catId AND estado != '*'")
+    suspend fun contarPorCategoria(catId: Int): Int
 }
