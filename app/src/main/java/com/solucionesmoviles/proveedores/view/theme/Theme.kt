@@ -16,7 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-// Definimos tu paleta de colores CLARA (Light)
+// Paleta CLARA
 private val LightColorScheme = lightColorScheme(
     primary = AzulPrimario,
     secondary = AzulSecundario,
@@ -30,14 +30,24 @@ private val LightColorScheme = lightColorScheme(
     onSurface = Color.Black
 )
 
-// La oscura la dejamos igual a la clara para "forzar" el diseño,
-// o usamos una por defecto, pero lo controlaremos abajo.
-private val DarkColorScheme = LightColorScheme
+// Paleta OSCURA
+private val DarkColorScheme = darkColorScheme(
+    primary = AzulPrimario,
+    secondary = AzulSecundario,
+    tertiary = AzulFondo,
+    background = FondoOscuro,
+    surface = SuperficieOscura,
+    onPrimary = Color.White,
+    onSecondary = Color.White,
+    onTertiary = AzulSecundario,
+    onBackground = TextoBlanco, // Texto blanco en fondo negro
+    onSurface = TextoBlanco     // Texto blanco en tarjeta gris
+)
 
 @Composable
 fun MaestroProveedoresTheme(
-    darkTheme: Boolean = false,
-    dynamicColor: Boolean = false, // Desactivamos colores dinámicos para respetar tu marca
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -49,15 +59,13 @@ fun MaestroProveedoresTheme(
         else -> LightColorScheme
     }
 
-    // Esto pinta la barra de estado (donde está la hora y batería) del color de tu app
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            // Pintamos la barra de estado de Blanco o Azul según prefieras
-            window.statusBarColor = Color.White.toArgb()
-            // Hacemos que los íconos de la barra (batería, hora) sean oscuros
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = true
+            window.statusBarColor = colorScheme.background.toArgb()
+            // Íconos blancos en modo oscuro, negros en modo claro
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }
 
