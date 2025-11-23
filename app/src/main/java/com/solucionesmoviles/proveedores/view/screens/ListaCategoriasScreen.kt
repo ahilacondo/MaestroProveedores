@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -46,9 +47,7 @@ fun ListaCategoriasScreen(
                 onClick = onNuevaCategoria,
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Nueva")
-            }
+            ) { Icon(Icons.Default.Add, contentDescription = "Nueva") }
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
@@ -57,17 +56,23 @@ fun ListaCategoriasScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(categorias) { cat ->
+                val esEliminado = cat.estado == "*"
                 Card(
-                    onClick = { onEditarCategoria(cat.id) },
+                    // REGLA: Si está eliminado, no se puede editar.
+                    onClick = {
+                        if (!esEliminado) onEditarCategoria(cat.id)
+                    },
+                    enabled = !esEliminado,
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.alpha(if (esEliminado) 0.6f else 1f)
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp).fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
-                            modifier = Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.tertiary),
+                            modifier = Modifier.size(40.dp).clip(CircleShape).background(if (esEliminado) Color.Gray else MaterialTheme.colorScheme.tertiary),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(cat.nombre.take(1), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiary)
@@ -77,10 +82,23 @@ fun ListaCategoriasScreen(
                             Text(cat.nombre, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                             Text("Cód: ${cat.codigo}", fontSize = 12.sp, color = Color.Gray)
                         }
-                        EstadoChip(activo = cat.estado == "A")
+                        EstadoChipCategoria(estado = cat.estado)
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+fun EstadoChipCategoria(estado: String) {
+    val (containerColor, contentColor, texto) = when (estado) {
+        "A" -> Triple(Color(0xFFDCFCE7), Color(0xFF166534), "Activo")
+        "I" -> Triple(Color(0xFFFFEDD5), Color(0xFF9A3412), "Inactivo")
+        "*" -> Triple(Color(0xFFFEE2E2), Color(0xFF991B1B), "Eliminado")
+        else -> Triple(Color.Gray, Color.White, "Desc.")
+    }
+    Surface(color = containerColor, shape = RoundedCornerShape(50), modifier = Modifier.padding(start = 8.dp)) {
+        Text(text = texto, color = contentColor, fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
     }
 }

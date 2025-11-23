@@ -30,30 +30,25 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
     private val paisDao = db.paisDao()
     private val categoriaDao = db.categoriaDao()
 
-    // --- NUEVO: PREFERENCIAS DE TEMA ---
+    // --- PREFERENCIAS DE TEMA ---
     private val userPreferences = UserPreferencesRepository(application)
 
-    // Estado del tema que observa la pantalla de Ajustes
     val isDarkMode = userPreferences.isDarkMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
-    // Función para cambiar el tema
     fun toggleTheme(isDark: Boolean) {
         viewModelScope.launch {
             userPreferences.saveDarkMode(isDark)
         }
     }
 
-    // --- NUEVO: VARIABLES TEMPORALES PARA EL FORMULARIO (Persistencia al navegar) ---
-    // Usamos mutableStateOf de Compose para que la UI se actualice sola
-    var nombreFormulario by androidx.compose.runtime.mutableStateOf("")
-    var rucFormulario by androidx.compose.runtime.mutableStateOf("")
-    var tipoFormulario by androidx.compose.runtime.mutableStateOf("Nacional")
+    // --- VARIABLES TEMPORALES PARA EL FORMULARIO (Persistencia) ---
+    var nombreFormulario by mutableStateOf("")
+    var rucFormulario by mutableStateOf("")
+    var tipoFormulario by mutableStateOf("Nacional")
 
-    // Control para saber si ya cargamos los datos de un ID específico (evita recargas innecesarias)
-    var formularioCargadoId by androidx.compose.runtime.mutableStateOf<Int?>(null)
+    var formularioCargadoId by mutableStateOf<Int?>(null)
 
-    // Función para limpiar (Cuando das click a "Nuevo")
     fun limpiarFormulario() {
         nombreFormulario = ""
         rucFormulario = ""
@@ -61,7 +56,6 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
         formularioCargadoId = null
     }
 
-    // Función para cargar datos de edición (Solo si no están cargados ya)
     fun cargarDatosParaEdicion(id: Int, proveedor: Proveedor) {
         if (formularioCargadoId != id) {
             nombreFormulario = proveedor.nombre
@@ -71,15 +65,14 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    // --------------------------------------------------
-    // 2. Estados de la UI (Buscador y Ordenamiento)
+    // 2. Estados de la UI (Buscador y Ordenamiento Proveedores)
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
 
-    private val _ordenarPorNombre = MutableStateFlow(true) // true = Nombre, false = RUC
+    private val _ordenarPorNombre = MutableStateFlow(true)
     val ordenarPorNombre = _ordenarPorNombre.asStateFlow()
 
-    // 3. LISTA MAESTRA DE PROVEEDORES (Reactiva a búsqueda y orden)
+    // 3. LISTA MAESTRA PROVEEDORES (Eliminados al final)
     @OptIn(ExperimentalCoroutinesApi::class)
     val listaProveedores: Flow<List<Proveedor>> = combine(
         _searchQuery,
@@ -87,35 +80,41 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
     ) { query, porNombre ->
         Pair(query, porNombre)
     }.flatMapLatest { (query, porNombre) ->
-        // A. Buscamos en BD según el texto
         proveedorDao.buscarProveedores(query).map { lista ->
-            // 1. Primero ordenamos por Nombre o RUC (según lo que elija el usuario)
             val listaOrdenada = if (porNombre) {
                 lista.sortedBy { it.nombre }
             } else {
                 lista.sortedBy { it.ruc }
             }
-
-            // 2. LUEGO volvemos a ordenar para mandar los eliminados (*) al final.
-            // false va antes que true, por lo tanto los activos van antes que los eliminados
+            // Eliminados (*) al final
             listaOrdenada.sortedBy { it.estado == "*" }
         }
     }
 
-    // 4. LISTAS AUXILIARES (PAÍSES Y CATEGORÍAS)
+    // 4. LISTAS AUXILIARES
 
-    // Listas filtradas (Solo Activos) para los Selectores
+    // Selectores (Solo Activos "A") - No requieren cambios, la BD ya filtra
     val listaPaisesActivos = paisDao.getActivos()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val listaCategoriasActivas = categoriaDao.getActivos()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Listas completas (Todos los estados) para los Mantenimientos
+    // --- CORRECCIÓN AQUÍ ---
+    // Listas completas para Mantenimientos (Ahora con Eliminados al final)
+
     val listaPaisesTodos = paisDao.getAll()
+        .map { lista ->
+            // Ordenamos para que los eliminados (*) vayan al fondo
+            lista.sortedBy { it.estado == "*" }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val listaCategoriasTodas = categoriaDao.getAll()
+        .map { lista ->
+            // Ordenamos para que los eliminados (*) vayan al fondo
+            lista.sortedBy { it.estado == "*" }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
 
@@ -128,10 +127,7 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
         _ordenarPorNombre.value = !_ordenarPorNombre.value
     }
 
-
-    // 6. OPERACIONES CRUD (Create, Read, Update, Delete)
-
-    // --- A. PROVEEDORES ---
+    // 6. OPERACIONES CRUD
     fun guardarProveedor(proveedor: Proveedor) {
         viewModelScope.launch {
             if (proveedor.id == 0) {
@@ -156,12 +152,20 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
 
     suspend fun getProveedorById(id: Int): Proveedor? = proveedorDao.getById(id)
 
+    // VALIDACIONES (Regla 2)
+    suspend fun puedeInactivarPais(id: Int): Boolean {
+        return proveedorDao.contarPorPais(id) == 0
+    }
 
-    // --- B. PAÍSES (Con Código Automático) ---
+    suspend fun puedeInactivarCategoria(id: Int): Boolean {
+        return proveedorDao.contarPorCategoria(id) == 0
+    }
+
+
+    // --- PAÍSES ---
     fun guardarPais(pais: Pais) {
         viewModelScope.launch {
             if (pais.id == 0) {
-                // Generamos código único: Ej "PAIS-4812"
                 val codigoAuto = "PAIS-${System.currentTimeMillis().toString().takeLast(4)}"
                 paisDao.insert(pais.copy(codigo = codigoAuto))
             } else {
@@ -185,11 +189,10 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
     suspend fun getPaisById(id: Int): Pais? = paisDao.getById(id)
 
 
-    // --- C. CATEGORÍAS (Con Código Automático) ---
+    // --- CATEGORÍAS ---
     fun guardarCategoria(categoria: Categoria) {
         viewModelScope.launch {
             if (categoria.id == 0) {
-                // Generamos código único: Ej "CAT-9021"
                 val codigoAuto = "CAT-${System.currentTimeMillis().toString().takeLast(4)}"
                 categoriaDao.insert(categoria.copy(codigo = codigoAuto))
             } else {
@@ -211,13 +214,4 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     suspend fun getCategoriaById(id: Int): Categoria? = categoriaDao.getById(id)
-
-    // VALIDACIONES DE INTEGRIDAD
-    suspend fun puedeInactivarPais(id: Int): Boolean {
-        return proveedorDao.contarPorPais(id) == 0
-    }
-
-    suspend fun puedeInactivarCategoria(id: Int): Boolean {
-        return proveedorDao.contarPorCategoria(id) == 0
-    }
 }

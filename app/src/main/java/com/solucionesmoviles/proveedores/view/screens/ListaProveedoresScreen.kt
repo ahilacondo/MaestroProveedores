@@ -7,7 +7,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Numbers
 import androidx.compose.material.icons.filled.Search
@@ -18,6 +17,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -38,8 +38,6 @@ fun ListaProveedoresScreen(
 ) {
     val proveedores by viewModel.listaProveedores.collectAsState(initial = emptyList())
     val textoBusqueda by viewModel.searchQuery.collectAsState()
-
-    // Estado del ordenamiento
     val ordenadoPorNombre by viewModel.ordenarPorNombre.collectAsState()
 
     Scaffold(
@@ -47,23 +45,11 @@ fun ListaProveedoresScreen(
             CenterAlignedTopAppBar(
                 title = { Text("Proveedores", fontWeight = FontWeight.Bold) },
                 actions = {
-                    // --- MEJORA VISUAL DEL BOTÓN DE ORDENAR ---
-                    // Ahora muestra TEXTO o ÍCONO diferente según el estado
                     IconButton(onClick = { viewModel.cambiarOrden() }) {
                         if (ordenadoPorNombre) {
-                            // Si es por Nombre, muestra ícono de letras (A-Z)
-                            Icon(
-                                imageVector = Icons.Default.SortByAlpha,
-                                contentDescription = "Orden A-Z",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+                            Icon(Icons.Default.SortByAlpha, contentDescription = "A-Z", tint = MaterialTheme.colorScheme.primary)
                         } else {
-                            // Si es por RUC, muestra ícono de números (#)
-                            Icon(
-                                imageVector = Icons.Default.Numbers,
-                                contentDescription = "Orden por RUC",
-                                tint = MaterialTheme.colorScheme.secondary
-                            )
+                            Icon(Icons.Default.Numbers, contentDescription = "RUC", tint = MaterialTheme.colorScheme.secondary)
                         }
                     }
                 },
@@ -73,30 +59,17 @@ fun ListaProveedoresScreen(
                 )
             )
         },
-        bottomBar = {
-            BottomNavBar(
-                itemSeleccionado = "proveedores",
-                onNavegar = onNavegar
-            )
-        },
+        bottomBar = { BottomNavBar(itemSeleccionado = "proveedores", onNavegar = onNavegar) },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onNuevoProveedor,
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Nuevo Proveedor")
-            }
+            ) { Icon(Icons.Default.Add, contentDescription = "Nuevo") }
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            // BARRA DE BÚSQUEDA (Filtro real)
+        Column(modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp)) {
             OutlinedTextField(
                 value = textoBusqueda,
                 onValueChange = { viewModel.onSearchQueryChanged(it) },
@@ -107,35 +80,32 @@ fun ListaProveedoresScreen(
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface
                 )
             )
 
-            // Pequeño texto informativo del orden actual (Opcional, ayuda mucho)
             Text(
                 text = if (ordenadoPorNombre) "Ordenado por: Nombre (A-Z)" else "Ordenado por: RUC",
-                fontSize = 12.sp,
-                color = Color.Gray,
-                modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                fontSize = 12.sp, color = Color.Gray, modifier = Modifier.padding(start = 8.dp, top = 4.dp)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // LISTA
             if (proveedores.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("No se encontraron proveedores", color = Color.Gray)
                 }
             } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(proveedores) { proveedor ->
                         ProveedorItem(
                             proveedor = proveedor,
-                            onClick = { onEditarProveedor(proveedor.id) }
+                            // REGLA: Si está eliminado (*), NO HACEMOS NADA al hacer click.
+                            onClick = {
+                                if (proveedor.estado != "*") {
+                                    onEditarProveedor(proveedor.id)
+                                }
+                            }
                         )
                     }
                 }
@@ -146,66 +116,62 @@ fun ListaProveedoresScreen(
 
 @Composable
 fun ProveedorItem(proveedor: Proveedor, onClick: () -> Unit) {
+    val esEliminado = proveedor.estado == "*"
+
     Card(
         onClick = onClick,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
+        // Deshabilitamos el efecto visual de click si está eliminado
+        enabled = !esEliminado,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(12.dp),
+        // Opacidad reducida si está eliminado para que parezca "fantasma"
+        modifier = Modifier.alpha(if (esEliminado) 0.6f else 1f)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.tertiary),
+                    .background(if (esEliminado) Color.Gray else MaterialTheme.colorScheme.tertiary),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = if (proveedor.nombre.isNotEmpty()) proveedor.nombre.take(1).uppercase() else "?",
                     color = MaterialTheme.colorScheme.onTertiary,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp
+                    fontWeight = FontWeight.Bold, fontSize = 20.sp
                 )
             }
 
             Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = proveedor.nombre,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "RUC: ${proveedor.ruc}",
-                    fontSize = 14.sp,
-                    color = Color.Gray
-                )
-                Text(
-                    text = proveedor.tipoProveedor,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Text(text = proveedor.nombre, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
+                Text(text = "RUC: ${proveedor.ruc}", fontSize = 14.sp, color = Color.Gray)
+                Text(text = proveedor.tipoProveedor, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
             }
 
-            EstadoChip(activo = proveedor.estado == "A")
+            // Pasamos el estado (letra) en lugar de booleano
+            EstadoChip(estado = proveedor.estado)
         }
     }
 }
 
 @Composable
-fun EstadoChip(activo: Boolean) {
-    val containerColor = if (activo) Color(0xFFDCFCE7) else Color(0xFFFEE2E2)
-    val contentColor = if (activo) Color(0xFF166534) else Color(0xFF991B1B)
-    val texto = if (activo) "Activo" else "Inactivo"
+fun EstadoChip(estado: String) {
+    // LÓGICA DE COLORES SOLICITADA:
+    // A (Activo) -> Verde
+    // I (Inactivo) -> Naranja
+    // * (Eliminado) -> Rojo
+    val (containerColor, contentColor, texto) = when (estado) {
+        "A" -> Triple(Color(0xFFDCFCE7), Color(0xFF166534), "Activo")
+        "I" -> Triple(Color(0xFFFFEDD5), Color(0xFF9A3412), "Inactivo") // Naranja
+        "*" -> Triple(Color(0xFFFEE2E2), Color(0xFF991B1B), "Eliminado") // Rojo
+        else -> Triple(Color.Gray, Color.White, "Desc.")
+    }
 
     Surface(
         color = containerColor,
