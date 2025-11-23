@@ -89,11 +89,15 @@ fun HomeScreen(
                     modifier = Modifier.weight(1f),
                     onClick = { onNavegarA("paises_lista") }
                 )
+
+                // --- AQUÍ ESTABA EL PROBLEMA ---
                 MenuCard(
                     titulo = "Ajustes",
                     icono = Icons.Filled.Settings,
                     modifier = Modifier.weight(1f),
-                    onClick = { /* Acción futura */ }
+                    // Antes tenías { /* Acción futura */ }
+                    // Ahora lo cambiamos para navegar a la ruta "ajustes"
+                    onClick = { onNavegarA("ajustes") }
                 )
             }
         }

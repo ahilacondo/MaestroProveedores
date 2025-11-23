@@ -19,6 +19,7 @@ import com.solucionesmoviles.proveedores.view.screens.ListaPaisesScreen
 import com.solucionesmoviles.proveedores.view.screens.FormularioPaisScreen
 import com.solucionesmoviles.proveedores.view.screens.ListaCategoriasScreen
 import com.solucionesmoviles.proveedores.view.screens.FormularioCategoriaScreen
+import com.solucionesmoviles.proveedores.view.screens.AjustesScreen
 
 @Composable
 fun AppNavigation(viewModel: ProveedorViewModel) {
@@ -41,6 +42,12 @@ fun AppNavigation(viewModel: ProveedorViewModel) {
         composable("home") {
             HomeScreen(
                 onNavegarA = { ruta -> navController.navigate(ruta) }
+            )
+        }
+        composable("ajustes") {
+            AjustesScreen(
+                viewModel = viewModel,
+                onVolver = { navController.popBackStack() }
             )
         }
 

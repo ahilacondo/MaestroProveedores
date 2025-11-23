@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.solucionesmoviles.proveedores.data.AppDatabase
+import com.solucionesmoviles.proveedores.data.UserPreferencesRepository
 import com.solucionesmoviles.proveedores.model.Categoria
 import com.solucionesmoviles.proveedores.model.Pais
 import com.solucionesmoviles.proveedores.model.Proveedor
@@ -26,6 +27,20 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
     private val paisDao = db.paisDao()
     private val categoriaDao = db.categoriaDao()
 
+    // --- NUEVO: PREFERENCIAS DE TEMA (Esto arregla el error en AjustesScreen) ---
+    private val userPreferences = UserPreferencesRepository(application)
+
+    // Estado del tema que observa la pantalla de Ajustes
+    val isDarkMode = userPreferences.isDarkMode
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    // Función para cambiar el tema
+    fun toggleTheme(isDark: Boolean) {
+        viewModelScope.launch {
+            userPreferences.saveDarkMode(isDark)
+        }
+    }
+    // --------------------------------------------------
     // 2. Estados de la UI (Buscador y Ordenamiento)
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()

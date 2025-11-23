@@ -67,4 +67,5 @@ dependencies {
     ksp("androidx.room:room-compiler:$room_version")
 
     implementation("androidx.compose.material:material-icons-extended:1.7.0")
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
 }
