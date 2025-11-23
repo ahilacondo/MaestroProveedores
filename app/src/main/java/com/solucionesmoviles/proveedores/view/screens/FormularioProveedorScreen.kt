@@ -29,7 +29,7 @@ fun FormularioProveedorScreen(
     onGuardarFinalizado: () -> Unit,
     onCancelar: () -> Unit
 ) {
-    // 1. LEEMOS LOS DATOS DESDE EL VIEWMODEL (Persistencia al navegar)
+    // 1. LEEMOS LOS DATOS DESDE EL VIEWMODEL
     val nombre = viewModel.nombreFormulario
     val ruc = viewModel.rucFormulario
     val tipoProveedor = viewModel.tipoFormulario
@@ -39,33 +39,37 @@ fun FormularioProveedorScreen(
 
     var selectedPaisId by remember { mutableIntStateOf(0) }
     var selectedCategoriaId by remember { mutableIntStateOf(0) }
+
+    // CORRECCIÓN VISUAL: Inicializamos con "Seleccionar"
     var nombrePais by remember { mutableStateOf("Seleccionar") }
     var nombreCategoria by remember { mutableStateOf("Seleccionar") }
 
     var proveedorActual by remember { mutableStateOf<Proveedor?>(null) }
     val esEdicion = idProveedor != 0
-
-    // LÓGICA DE BLOQUEO: Si el estado es "*" (Eliminado), NO se puede editar.
     val esEliminado = proveedorActual?.estado == "*"
     val habilitado = !esEliminado
 
-    // 2. CARGA INICIAL DE DATOS
+    // 2. CARGA INICIAL DE DATOS (EDICIÓN)
     LaunchedEffect(idProveedor) {
         if (esEdicion) {
             val prov = viewModel.getProveedorById(idProveedor)
             prov?.let {
                 proveedorActual = it
-                // Cargamos datos al ViewModel para que persistan
                 viewModel.cargarDatosParaEdicion(idProveedor, it)
 
-                // Cargamos IDs de selectores (si aún no se han seleccionado otros)
+                // Cargar IDs
                 if (selectedPaisId == 0) selectedPaisId = it.paisId
                 if (selectedCategoriaId == 0) selectedCategoriaId = it.categoriaId
-                nombrePais = "ID Registrado: ${it.paisId}"
-                nombreCategoria = "ID Registrado: ${it.categoriaId}"
+
+                // CORRECCIÓN VISUAL: BUSCAMOS EL NOMBRE REAL EN LA BD
+                // En lugar de poner "ID: 5", buscamos "Perú"
+                val p = viewModel.getPaisById(it.paisId)
+                nombrePais = p?.nombre ?: "Desconocido (ID: ${it.paisId})"
+
+                val c = viewModel.getCategoriaById(it.categoriaId)
+                nombreCategoria = c?.nombre ?: "Desconocido (ID: ${it.categoriaId})"
             }
         } else {
-            // Si es Nuevo, limpiamos el ViewModel si venimos de otra edición
             if (viewModel.formularioCargadoId != 0) {
                 viewModel.limpiarFormulario()
                 viewModel.formularioCargadoId = 0
@@ -73,18 +77,23 @@ fun FormularioProveedorScreen(
         }
     }
 
-    // 3. RECUPERAR SELECCIONES AL VOLVER DE OTRA PANTALLA
+    // 3. RECUPERAR SELECCIÓN DE PAÍS (AL VOLVER)
     LaunchedEffect(idPaisSeleccionado) {
         if (idPaisSeleccionado != null) {
             selectedPaisId = idPaisSeleccionado
-            nombrePais = "País Seleccionado (ID: $idPaisSeleccionado)"
+            // CORRECCIÓN VISUAL: Buscamos el nombre del ID seleccionado
+            val p = viewModel.getPaisById(idPaisSeleccionado)
+            nombrePais = p?.nombre ?: "Cargando..."
         }
     }
 
+    // 4. RECUPERAR SELECCIÓN DE CATEGORÍA (AL VOLVER)
     LaunchedEffect(idCategoriaSeleccionada) {
         if (idCategoriaSeleccionada != null) {
             selectedCategoriaId = idCategoriaSeleccionada
-            nombreCategoria = "Categoría Seleccionada (ID: $idCategoriaSeleccionada)"
+            // CORRECCIÓN VISUAL: Buscamos el nombre del ID seleccionado
+            val c = viewModel.getCategoriaById(idCategoriaSeleccionada)
+            nombreCategoria = c?.nombre ?: "Cargando..."
         }
     }
 
@@ -96,7 +105,6 @@ fun FormularioProveedorScreen(
                     TextButton(onClick = onCancelar) { Text("Cancelar", color = MaterialTheme.colorScheme.primary) }
                 },
                 actions = {
-                    // Solo mostramos el botón "Guardar" si está habilitado (NO eliminado)
                     if (habilitado) {
                         TextButton(onClick = {
                             if (nombre.isNotBlank() && ruc.isNotBlank() && selectedPaisId != 0 && selectedCategoriaId != 0) {
@@ -141,23 +149,23 @@ fun FormularioProveedorScreen(
                         label = "Nombre",
                         valor = nombre,
                         placeholder = "Ej: Molitalia S.A.",
-                        enabled = habilitado, // <--- BLOQUEADO SI ELIMINADO
-                        onChange = { viewModel.nombreFormulario = it } // Guardamos en ViewModel
+                        enabled = habilitado,
+                        onChange = { viewModel.nombreFormulario = it }
                     )
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp, color = Color.Gray)
                     CampoTextoSimple(
                         label = "RUC",
                         valor = ruc,
                         placeholder = "Ej: 201000...",
-                        enabled = habilitado, // <--- BLOQUEADO SI ELIMINADO
-                        onChange = { viewModel.rucFormulario = it } // Guardamos en ViewModel
+                        enabled = habilitado,
+                        onChange = { viewModel.rucFormulario = it }
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // GRUPO 2: SELECTORES
+            // GRUPO 2: SELECTORES (Ahora mostrarán nombres bonitos)
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(12.dp)
@@ -167,7 +175,7 @@ fun FormularioProveedorScreen(
                         SelectorItem(
                             label = "Tipo Prov.",
                             valor = tipoProveedor,
-                            enabled = habilitado, // <--- BLOQUEADO SI ELIMINADO
+                            enabled = habilitado,
                             onClick = { expandirMenuTipo = true }
                         )
 
@@ -180,7 +188,7 @@ fun FormularioProveedorScreen(
                                 DropdownMenuItem(
                                     text = { Text(tipo, color = MaterialTheme.colorScheme.onSurface) },
                                     onClick = {
-                                        viewModel.tipoFormulario = tipo // Guardamos en ViewModel
+                                        viewModel.tipoFormulario = tipo
                                         expandirMenuTipo = false
                                     }
                                 )
@@ -189,17 +197,22 @@ fun FormularioProveedorScreen(
                     }
 
                     HorizontalDivider(thickness = 0.5.dp, color = Color.Gray)
+
+                    // Aquí se verá "Categoría: Lácteos" en vez de "ID: 4"
                     SelectorItem(
                         label = "Categoría",
                         valor = nombreCategoria,
-                        enabled = habilitado, // <--- BLOQUEADO SI ELIMINADO
+                        enabled = habilitado,
                         onClick = onSeleccionarCategoria
                     )
+
                     HorizontalDivider(thickness = 0.5.dp, color = Color.Gray)
+
+                    // Aquí se verá "País: Perú" en vez de "ID: 2"
                     SelectorItem(
                         label = "País",
                         valor = nombrePais,
-                        enabled = habilitado, // <--- BLOQUEADO SI ELIMINADO
+                        enabled = habilitado,
                         onClick = onSeleccionarPais
                     )
                 }
@@ -209,24 +222,21 @@ fun FormularioProveedorScreen(
                 Spacer(modifier = Modifier.height(32.dp))
                 val estadoActual = proveedorActual!!.estado
 
-                // Variables para controlar los diálogos
+                // DIÁLOGOS
                 var mostrarDialogoInactivar by remember { mutableStateOf(false) }
                 var mostrarDialogoEliminar by remember { mutableStateOf(false) }
 
-                // BOTÓN 1: REACTIVAR / INACTIVAR
+                // BOTÓN REACTIVAR / INACTIVAR
                 Button(
                     onClick = {
                         if (estadoActual == "A") {
-                            // Si está activo, pedimos confirmación antes de inactivar
                             mostrarDialogoInactivar = true
                         } else {
-                            // Si ya está inactivo o eliminado, reactivamos directamente
                             viewModel.reactivarProveedor(proveedorActual!!)
                             onGuardarFinalizado()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
-                        // Amarillo si es para Inactivar, Verde si es para Reactivar
                         containerColor = if (estadoActual == "A") Color(0xFFFEF3C7) else Color(0xFFDCFCE7),
                         contentColor = if (estadoActual == "A") Color(0xFFD97706) else Color(0xFF166534)
                     ),
@@ -238,8 +248,7 @@ fun FormularioProveedorScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // BOTÓN 2: ELIMINAR (Solo visible si está INACTIVO "I")
-                // No se puede eliminar directamente un Activo ("A") ni re-eliminar un Eliminado ("*")
+                // BOTÓN ELIMINAR (Solo si es INACTIVO)
                 if (estadoActual == "I") {
                     Button(
                         onClick = { mostrarDialogoEliminar = true },
@@ -251,13 +260,11 @@ fun FormularioProveedorScreen(
                     }
                 }
 
-                // --- DIÁLOGOS DE CONFIRMACIÓN ---
-
                 if (mostrarDialogoInactivar) {
                     AlertDialog(
                         onDismissRequest = { mostrarDialogoInactivar = false },
                         title = { Text("¿Inactivar Proveedor?", fontWeight = FontWeight.Bold) },
-                        text = { Text("El proveedor dejará de estar disponible para nuevas operaciones, pero conservará su historial.") },
+                        text = { Text("El proveedor dejará de estar disponible para nuevas operaciones.") },
                         confirmButton = {
                             TextButton(onClick = {
                                 viewModel.inactivarProveedor(proveedorActual!!)
@@ -275,7 +282,7 @@ fun FormularioProveedorScreen(
                     AlertDialog(
                         onDismissRequest = { mostrarDialogoEliminar = false },
                         title = { Text("¿Eliminar definitivamente?", fontWeight = FontWeight.Bold) },
-                        text = { Text("El registro se marcará como eliminado y se archivará al final de la lista. Esta acción requiere reactivación manual para deshacerse.") },
+                        text = { Text("El registro se marcará como eliminado y se archivará al final de la lista.") },
                         confirmButton = {
                             TextButton(
                                 onClick = {
@@ -296,14 +303,13 @@ fun FormularioProveedorScreen(
     }
 }
 
-// COMPONENTES PERSONALIZADOS ACTUALIZADOS
-
+// COMPONENTES (Igual que antes)
 @Composable
 fun CampoTextoSimple(
     label: String,
     valor: String,
     placeholder: String,
-    enabled: Boolean = true, // Parámetro para bloquear
+    enabled: Boolean = true,
     onChange: (String) -> Unit
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -316,7 +322,7 @@ fun CampoTextoSimple(
         TextField(
             value = valor,
             onValueChange = onChange,
-            enabled = enabled, // Bloqueo aquí
+            enabled = enabled,
             placeholder = { Text(placeholder, color = Color.Gray) },
             colors = TextFieldDefaults.colors(
                 unfocusedContainerColor = Color.Transparent,
@@ -325,7 +331,6 @@ fun CampoTextoSimple(
                 focusedIndicatorColor = Color.Transparent,
                 focusedTextColor = MaterialTheme.colorScheme.onSurface,
                 unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                // Colores para estado deshabilitado (Read-only)
                 disabledTextColor = Color.Gray,
                 disabledIndicatorColor = Color.Transparent,
                 disabledContainerColor = Color.Transparent,
@@ -340,22 +345,22 @@ fun CampoTextoSimple(
 fun SelectorItem(
     label: String,
     valor: String,
-    enabled: Boolean = true, // Parámetro para bloquear
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = enabled, onClick = onClick) // Bloqueo de click
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(text = label, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text = valor, color = if (enabled) Color.Gray else Color.LightGray) // Feedback visual
+            Text(text = valor, color = if (enabled) Color.Gray else Color.LightGray)
             Spacer(modifier = Modifier.width(8.dp))
-            if (enabled) { // Solo mostrar flecha si se puede editar
+            if (enabled) {
                 Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(14.dp))
             }
         }
