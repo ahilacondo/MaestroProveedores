@@ -28,26 +28,21 @@ fun FormularioProveedorScreen(
     onGuardarFinalizado: () -> Unit,
     onCancelar: () -> Unit
 ) {
-    // --- 1. ESTADOS DEL FORMULARIO ---
     var nombre by remember { mutableStateOf("") }
     var ruc by remember { mutableStateOf("") }
-    var tipoProveedor by remember { mutableStateOf("Nacional") } // Valor por defecto
+    var tipoProveedor by remember { mutableStateOf("Nacional") }
 
-    // NUEVO: Variables para el menú desplegable
     val tiposDisponibles = listOf("Nacional", "Internacional", "Local", "Personal")
     var expandirMenuTipo by remember { mutableStateOf(false) }
 
-    // IDs y Nombres para mostrar
     var selectedPaisId by remember { mutableIntStateOf(0) }
     var selectedCategoriaId by remember { mutableIntStateOf(0) }
     var nombrePais by remember { mutableStateOf("Seleccionar") }
     var nombreCategoria by remember { mutableStateOf("Seleccionar") }
 
-    // Control de Edición
     var proveedorActual by remember { mutableStateOf<Proveedor?>(null) }
     val esEdicion = idProveedor != 0
 
-    // --- 2. LÓGICA DE CARGA (Si es edición) ---
     LaunchedEffect(idProveedor) {
         if (esEdicion) {
             val prov = viewModel.getProveedorById(idProveedor)
@@ -58,16 +53,12 @@ fun FormularioProveedorScreen(
                 tipoProveedor = it.tipoProveedor
                 selectedPaisId = it.paisId
                 selectedCategoriaId = it.categoriaId
-
-                // Intentamos cargar nombres bonitos (idealmente vendrían de la BD)
-                // Por ahora mostramos el ID para confirmar que funciona
                 nombrePais = "ID Registrado: ${it.paisId}"
                 nombreCategoria = "ID Registrado: ${it.categoriaId}"
             }
         }
     }
 
-    // --- 3. RESPUESTA DE LOS SELECTORES (Cuando vuelves de elegir País/Cat) ---
     LaunchedEffect(idPaisSeleccionado) {
         if (idPaisSeleccionado != null) {
             selectedPaisId = idPaisSeleccionado
@@ -87,11 +78,10 @@ fun FormularioProveedorScreen(
             CenterAlignedTopAppBar(
                 title = { Text(if (esEdicion) "Editar Proveedor" else "Crear Proveedor", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    TextButton(onClick = onCancelar) { Text("Cancelar", color = Color(0xFF2563EB)) }
+                    TextButton(onClick = onCancelar) { Text("Cancelar", color = MaterialTheme.colorScheme.primary) }
                 },
                 actions = {
                     TextButton(onClick = {
-                        // VALIDACIÓN
                         if (nombre.isNotBlank() && ruc.isNotBlank() && selectedPaisId != 0 && selectedCategoriaId != 0) {
                             val nuevoProv = Proveedor(
                                 id = if (esEdicion) idProveedor else 0,
@@ -106,13 +96,16 @@ fun FormularioProveedorScreen(
                             onGuardarFinalizado()
                         }
                     }) {
-                        Text("Guardar", fontWeight = FontWeight.Bold, color = Color(0xFF2563EB))
+                        Text("Guardar", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                )
             )
         },
-        containerColor = Color(0xFFF3F4F6)
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier
@@ -122,25 +115,24 @@ fun FormularioProveedorScreen(
         ) {
             // GRUPO 1: DATOS BÁSICOS
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     CampoTextoSimple(label = "Nombre", valor = nombre, placeholder = "Ej: Molitalia S.A.", onChange = { nombre = it })
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp, color = Color.LightGray)
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp, color = Color.Gray)
                     CampoTextoSimple(label = "RUC", valor = ruc, placeholder = "Ej: 201000...", onChange = { ruc = it })
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // GRUPO 2: SELECTORES (Aquí está tu cambio)
+            // GRUPO 2: SELECTORES
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Column {
-                    // A. MENU DESPLEGABLE (DROPDOWN)
                     Box(modifier = Modifier.fillMaxWidth()) {
                         SelectorItem(
                             label = "Tipo Prov.",
@@ -151,11 +143,11 @@ fun FormularioProveedorScreen(
                         DropdownMenu(
                             expanded = expandirMenuTipo,
                             onDismissRequest = { expandirMenuTipo = false },
-                            modifier = Modifier.background(Color.White)
+                            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
                         ) {
                             tiposDisponibles.forEach { tipo ->
                                 DropdownMenuItem(
-                                    text = { Text(tipo) },
+                                    text = { Text(tipo, color = MaterialTheme.colorScheme.onSurface) },
                                     onClick = {
                                         tipoProveedor = tipo
                                         expandirMenuTipo = false
@@ -165,19 +157,13 @@ fun FormularioProveedorScreen(
                         }
                     }
 
-                    HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray)
-
-                    // B. SELECTOR DE CATEGORÍA (Navegación)
+                    HorizontalDivider(thickness = 0.5.dp, color = Color.Gray)
                     SelectorItem(label = "Categoría", valor = nombreCategoria, onClick = onSeleccionarCategoria)
-
-                    HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray)
-
-                    // C. SELECTOR DE PAÍS (Navegación)
+                    HorizontalDivider(thickness = 0.5.dp, color = Color.Gray)
                     SelectorItem(label = "País", valor = nombrePais, onClick = onSeleccionarPais)
                 }
             }
 
-            // BOTONES DE ACCIÓN (Solo en edición)
             if (esEdicion && proveedorActual != null) {
                 Spacer(modifier = Modifier.height(32.dp))
                 val estadoActual = proveedorActual!!.estado
@@ -216,20 +202,27 @@ fun FormularioProveedorScreen(
     }
 }
 
-// COMPONENTES REUTILIZABLES
 @Composable
 fun CampoTextoSimple(label: String, valor: String, placeholder: String, onChange: (String) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        Text(text = label, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(100.dp))
+        Text(
+            text = label,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.width(100.dp),
+            color = MaterialTheme.colorScheme.onSurface // COLOR DINÁMICO
+        )
         TextField(
             value = valor,
             onValueChange = onChange,
-            placeholder = { Text(placeholder, color = Color.LightGray) },
+            placeholder = { Text(placeholder, color = Color.Gray) },
             colors = TextFieldDefaults.colors(
                 unfocusedContainerColor = Color.Transparent,
                 focusedContainerColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
-                focusedIndicatorColor = Color.Transparent
+                focusedIndicatorColor = Color.Transparent,
+                // Texto que escribe el usuario
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
             ),
             modifier = Modifier.weight(1f)
         )
@@ -246,11 +239,11 @@ fun SelectorItem(label: String, valor: String, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(text = label, fontWeight = FontWeight.SemiBold)
+        Text(text = label, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(text = valor, color = Color.Gray)
             Spacer(modifier = Modifier.width(8.dp))
-            Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, tint = Color.LightGray, modifier = Modifier.size(14.dp))
+            Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(14.dp))
         }
     }
 }

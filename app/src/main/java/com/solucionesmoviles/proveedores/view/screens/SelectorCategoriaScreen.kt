@@ -27,22 +27,22 @@ fun SelectorCategoriaScreen(
 ) {
     val categorias by viewModel.listaCategoriasActivas.collectAsState()
     var textoBusqueda by remember { mutableStateOf("") }
-
-    val categoriasFiltradas = categorias.filter {
-        it.nombre.contains(textoBusqueda, ignoreCase = true)
-    }
+    val categoriasFiltradas = categorias.filter { it.nombre.contains(textoBusqueda, ignoreCase = true) }
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Categoría", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    TextButton(onClick = onCancelar) { Text("Cancelar", color = Color(0xFF2563EB)) }
+                    TextButton(onClick = onCancelar) { Text("Cancelar", color = MaterialTheme.colorScheme.primary) }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                )
             )
         },
-        containerColor = Color(0xFFF3F4F6)
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp)
@@ -50,31 +50,34 @@ fun SelectorCategoriaScreen(
             OutlinedTextField(
                 value = textoBusqueda,
                 onValueChange = { textoBusqueda = it },
-                modifier = Modifier.fillMaxWidth().background(Color.White, RoundedCornerShape(8.dp)),
+                modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text("Buscar categoría...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = Color.White, focusedContainerColor = Color.White,
-                    unfocusedBorderColor = Color.LightGray, focusedBorderColor = Color(0xFF2563EB)
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                 )
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            LazyColumn(modifier = Modifier.fillMaxSize().background(Color.White, RoundedCornerShape(12.dp))) {
+            LazyColumn(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))) {
                 items(categoriasFiltradas) { categoria ->
                     Column {
                         Row(
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
                                 .clickable { onCategoriaSeleccionada(categoria.id) }
                                 .padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(text = categoria.nombre, fontSize = 16.sp, color = Color.Black)
+                            Text(text = categoria.nombre, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
                         }
-                        Divider(color = Color(0xFFF3F4F6), thickness = 1.dp)
+                        Divider(color = MaterialTheme.colorScheme.background, thickness = 1.dp)
                     }
                 }
             }

@@ -24,7 +24,8 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White) // Fondo blanco limpio
+            // CAMBIO: Fondo dinámico (Blanco en día, Negro en noche)
+            .background(MaterialTheme.colorScheme.background)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -34,7 +35,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
             imageVector = Icons.Default.Smartphone,
             contentDescription = null,
             modifier = Modifier.size(80.dp),
-            tint = Color(0xFF4F46E5) // Azul índigo moderno
+            tint = MaterialTheme.colorScheme.primary // Azul corporativo
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -44,7 +45,8 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
             text = "Bienvenido",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF111827)
+            // CAMBIO: Texto se adapta al fondo
+            color = MaterialTheme.colorScheme.onBackground
         )
         Text(
             text = "Gestor de Proveedores",
@@ -61,7 +63,13 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
             label = { Text("Usuario") },
             placeholder = { Text("analista_01") },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface
+            )
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -72,7 +80,13 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
             label = { Text("Contraseña") },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface
+            )
         )
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -84,7 +98,8 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                 .fillMaxWidth()
                 .height(50.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF4F46E5)
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             ),
             shape = RoundedCornerShape(12.dp)
         ) {

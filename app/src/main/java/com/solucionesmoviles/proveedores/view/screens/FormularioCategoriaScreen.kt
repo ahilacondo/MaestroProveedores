@@ -1,7 +1,6 @@
 package com.solucionesmoviles.proveedores.view.screens
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -40,14 +39,13 @@ fun FormularioCategoriaScreen(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text(if (esEdicion) "Editar Categoría" else "Crear Categoría", fontWeight = FontWeight.Bold) },
-                navigationIcon = { TextButton(onClick = onCancelar) { Text("Cancelar") } },
+                navigationIcon = { TextButton(onClick = onCancelar) { Text("Cancelar", color = MaterialTheme.colorScheme.primary) } },
                 actions = {
                     TextButton(onClick = {
                         if (nombre.isNotBlank()) {
                             viewModel.guardarCategoria(
                                 Categoria(
                                     id = if (esEdicion) idCategoria else 0,
-                                    // Código vacío si es nuevo -> ViewModel lo genera
                                     codigo = if (esEdicion) codigoActual else "",
                                     nombre = nombre,
                                     estado = catActual?.estado ?: "A"
@@ -55,29 +53,20 @@ fun FormularioCategoriaScreen(
                             )
                             onGuardarFinalizado()
                         }
-                    }) { Text("Guardar", fontWeight = FontWeight.Bold) }
+                    }) { Text("Guardar", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) }
                 }
             )
         },
-        containerColor = Color(0xFFF3F4F6)
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(modifier = Modifier.padding(padding).padding(16.dp)) {
-            Card(colors = CardDefaults.cardColors(containerColor = Color.White)) {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Column(modifier = Modifier.padding(16.dp)) {
-
                     if (esEdicion) {
                         Text(text = "Código: $codigoActual", color = Color.Gray, fontSize = 12.sp)
                         Spacer(modifier = Modifier.height(8.dp))
                     }
-
-                    OutlinedTextField(
-                        value = nombre,
-                        onValueChange = { nombre = it },
-                        label = { Text("Nombre de Categoría") },
-                        placeholder = { Text("Ej: Lácteos") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
+                    CampoTextoSimple(label = "Nombre", valor = nombre, placeholder = "Ej: Lácteos", onChange = { nombre = it })
                 }
             }
 
@@ -90,7 +79,10 @@ fun FormularioCategoriaScreen(
                         if (estado == "A") viewModel.inactivarCategoria(catActual!!) else viewModel.reactivarCategoria(catActual!!)
                         onGuardarFinalizado()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFEF3C7), contentColor = Color(0xFFD97706)),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (estado == "A") Color(0xFFFEF3C7) else Color(0xFFDCFCE7),
+                        contentColor = if (estado == "A") Color(0xFFD97706) else Color(0xFF166534)
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 ) { Text(if (estado == "A") "Inactivar" else "Reactivar") }
 

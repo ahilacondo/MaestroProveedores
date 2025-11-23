@@ -32,15 +32,25 @@ fun ListaCategoriasScreen(
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(title = { Text("Mantenimiento Categorías", fontWeight = FontWeight.Bold) })
+            CenterAlignedTopAppBar(
+                title = { Text("Mantenimiento Categorías", fontWeight = FontWeight.Bold) },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                )
+            )
         },
         bottomBar = { BottomNavBar(itemSeleccionado = "categorias", onNavegar = onNavegar) },
         floatingActionButton = {
-            FloatingActionButton(onClick = onNuevaCategoria, containerColor = Color(0xFF2563EB), contentColor = Color.White) {
+            FloatingActionButton(
+                onClick = onNuevaCategoria,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ) {
                 Icon(Icons.Default.Add, contentDescription = "Nueva")
             }
         },
-        containerColor = Color(0xFFF3F4F6)
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         LazyColumn(
             modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp),
@@ -49,7 +59,7 @@ fun ListaCategoriasScreen(
             items(categorias) { cat ->
                 Card(
                     onClick = { onEditarCategoria(cat.id) },
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Row(
@@ -57,14 +67,14 @@ fun ListaCategoriasScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
-                            modifier = Modifier.size(40.dp).clip(CircleShape).background(Color(0xFFE0E7FF)),
+                            modifier = Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.tertiary),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(cat.nombre.take(1), fontWeight = FontWeight.Bold, color = Color(0xFF3730A3))
+                            Text(cat.nombre.take(1), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiary)
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(cat.nombre, fontWeight = FontWeight.Bold)
+                            Text(cat.nombre, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                             Text("Cód: ${cat.codigo}", fontSize = 12.sp, color = Color.Gray)
                         }
                         EstadoChip(activo = cat.estado == "A")

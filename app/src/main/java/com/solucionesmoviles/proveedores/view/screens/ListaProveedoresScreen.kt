@@ -34,11 +34,8 @@ fun ListaProveedoresScreen(
     onVolver: () -> Unit,
     onNavegar: (String) -> Unit
 ) {
-    // 1. Observamos los datos del ViewModel (Lista filtrada y ordenada)
     val proveedores by viewModel.listaProveedores.collectAsState(initial = emptyList())
     val textoBusqueda by viewModel.searchQuery.collectAsState()
-
-    // Estado para saber si estamos ordenando por Nombre (para pintar el ícono)
     val ordenadoPorNombre by viewModel.ordenarPorNombre.collectAsState()
 
     Scaffold(
@@ -46,37 +43,38 @@ fun ListaProveedoresScreen(
             CenterAlignedTopAppBar(
                 title = { Text("Maestro de Proveedores", fontWeight = FontWeight.Bold) },
                 actions = {
-                    // BOTÓN DE ORDENAMIENTO (Opcional de la guía)
                     IconButton(onClick = { viewModel.cambiarOrden() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Sort,
                             contentDescription = "Cambiar Orden",
-                            // Azul si es A-Z, Gris si es por RUC (Feedback visual)
-                            tint = if (ordenadoPorNombre) Color(0xFF2563EB) else Color.Gray
+                            tint = if (ordenadoPorNombre) MaterialTheme.colorScheme.primary else Color.Gray
                         )
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color.White
+                    // COLOR DINÁMICO: Fondo de barra
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
                 )
             )
         },
         bottomBar = {
             BottomNavBar(
-                itemSeleccionado = "proveedores", // Marcamos la pestaña actual
+                itemSeleccionado = "proveedores",
                 onNavegar = onNavegar
             )
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onNuevoProveedor,
-                containerColor = Color(0xFF2563EB), // Azul Institucional
-                contentColor = Color.White
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Nuevo Proveedor")
             }
         },
-        containerColor = Color(0xFFF3F4F6) // Fondo Gris Claro
+        // COLOR DINÁMICO: Fondo de pantalla
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier
@@ -88,18 +86,17 @@ fun ListaProveedoresScreen(
             OutlinedTextField(
                 value = textoBusqueda,
                 onValueChange = { viewModel.onSearchQueryChanged(it) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White, RoundedCornerShape(8.dp)),
+                modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text("Buscar por nombre o RUC...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = Color.White,
-                    focusedContainerColor = Color.White,
-                    unfocusedBorderColor = Color.LightGray,
-                    focusedBorderColor = Color(0xFF2563EB)
+                    // Fondos dinámicos para el input
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
                 )
             )
 
@@ -130,7 +127,10 @@ fun ListaProveedoresScreen(
 fun ProveedorItem(proveedor: Proveedor, onClick: () -> Unit) {
     Card(
         onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            // COLOR DINÁMICO: Tarjeta (Blanca en día / Gris en noche)
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -140,17 +140,17 @@ fun ProveedorItem(proveedor: Proveedor, onClick: () -> Unit) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // A. AVATAR CON INICIAL
+            // A. AVATAR
             Box(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFDBEAFE)), // Fondo Azul Claro
+                    .background(MaterialTheme.colorScheme.tertiary), // Azul suave
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = if (proveedor.nombre.isNotEmpty()) proveedor.nombre.take(1).uppercase() else "?",
-                    color = Color(0xFF1E40AF), // Texto Azul Oscuro
+                    color = MaterialTheme.colorScheme.onTertiary, // Texto sobre el azul suave
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp
                 )
@@ -164,18 +164,18 @@ fun ProveedorItem(proveedor: Proveedor, onClick: () -> Unit) {
                     text = proveedor.nombre,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
-                    color = Color.Black
+                    // COLOR DINÁMICO: Texto principal
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "RUC: ${proveedor.ruc}",
                     fontSize = 14.sp,
                     color = Color.Gray
                 )
-                // Mostramos el tipo pequeño (ej: Nacional)
                 Text(
                     text = proveedor.tipoProveedor,
                     fontSize = 12.sp,
-                    color = Color(0xFF2563EB)
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
 
@@ -187,9 +187,8 @@ fun ProveedorItem(proveedor: Proveedor, onClick: () -> Unit) {
 
 @Composable
 fun EstadoChip(activo: Boolean) {
-    // Colores dinámicos según estado
-    val containerColor = if (activo) Color(0xFFDCFCE7) else Color(0xFFFEE2E2) // Verde Claro / Rojo Claro
-    val contentColor = if (activo) Color(0xFF166534) else Color(0xFF991B1B)   // Verde Oscuro / Rojo Oscuro
+    val containerColor = if (activo) Color(0xFFDCFCE7) else Color(0xFFFEE2E2)
+    val contentColor = if (activo) Color(0xFF166534) else Color(0xFF991B1B)
     val texto = if (activo) "Activo" else "Inactivo"
 
     Surface(

@@ -7,7 +7,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,80 +25,59 @@ fun SelectorPaisScreen(
     onPaisSeleccionado: (Int) -> Unit,
     onCancelar: () -> Unit
 ) {
-    // Observamos la lista de PAÍSES ACTIVOS (Requerimiento de la guía: Solo Estado "A")
     val paises by viewModel.listaPaisesActivos.collectAsState()
-
-    // Estado local para el buscador de esta pantalla
     var textoBusqueda by remember { mutableStateOf("") }
-
-    // Filtramos la lista localmente según lo que escriba el usuario
-    val paisesFiltrados = paises.filter {
-        it.nombre.contains(textoBusqueda, ignoreCase = true)
-    }
+    val paisesFiltrados = paises.filter { it.nombre.contains(textoBusqueda, ignoreCase = true) }
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("País", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    TextButton(onClick = onCancelar) {
-                        Text("Cancelar", color = Color(0xFF2563EB))
-                    }
+                    TextButton(onClick = onCancelar) { Text("Cancelar", color = MaterialTheme.colorScheme.primary) }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                )
             )
         },
-        containerColor = Color(0xFFF3F4F6)
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .padding(16.dp)
+            modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp)
         ) {
-            // BARRA DE BÚSQUEDA
             OutlinedTextField(
                 value = textoBusqueda,
                 onValueChange = { textoBusqueda = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White, RoundedCornerShape(8.dp)),
+                modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text("Buscar país...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = Color.White,
-                    focusedContainerColor = Color.White,
-                    unfocusedBorderColor = Color.LightGray,
-                    focusedBorderColor = Color(0xFF2563EB)
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                 )
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // LISTA DE SELECCIÓN
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.White, RoundedCornerShape(12.dp))
-            ) {
+            LazyColumn(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))) {
                 items(paisesFiltrados) { pais ->
                     Column {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onPaisSeleccionado(pais.id) } // <--- AQUÍ RETORNAMOS EL ID
+                                .clickable { onPaisSeleccionado(pais.id) }
                                 .padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = pais.nombre,
-                                fontSize = 16.sp,
-                                color = Color.Black
-                            )
+                            Text(text = pais.nombre, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
                         }
-                        Divider(color = Color(0xFFF3F4F6), thickness = 1.dp)
+                        Divider(color = MaterialTheme.colorScheme.background, thickness = 1.dp)
                     }
                 }
             }
