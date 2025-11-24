@@ -179,19 +179,25 @@ fun FormularioProveedorScreen(
                             onClick = { expandirMenuTipo = true }
                         )
 
-                        DropdownMenu(
-                            expanded = expandirMenuTipo,
-                            onDismissRequest = { expandirMenuTipo = false },
-                            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd) // Pegado a la derecha
+                                .padding(top = 40.dp, end = 16.dp) // Bajamos un poco para no tapar el texto
                         ) {
-                            tiposDisponibles.forEach { tipo ->
-                                DropdownMenuItem(
-                                    text = { Text(tipo, color = MaterialTheme.colorScheme.onSurface) },
-                                    onClick = {
-                                        viewModel.tipoFormulario = tipo
-                                        expandirMenuTipo = false
-                                    }
-                                )
+                            DropdownMenu(
+                                expanded = expandirMenuTipo,
+                                onDismissRequest = { expandirMenuTipo = false },
+                                modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                            ) {
+                                tiposDisponibles.forEach { tipo ->
+                                    DropdownMenuItem(
+                                        text = { Text(tipo, color = MaterialTheme.colorScheme.onSurface) },
+                                        onClick = {
+                                            viewModel.tipoFormulario = tipo
+                                            expandirMenuTipo = false
+                                        }
+                                    )
+                                }
                             }
                         }
                     }

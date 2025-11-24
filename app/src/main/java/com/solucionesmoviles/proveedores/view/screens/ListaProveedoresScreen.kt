@@ -62,7 +62,10 @@ fun ListaProveedoresScreen(
         bottomBar = { BottomNavBar(itemSeleccionado = "proveedores", onNavegar = onNavegar) },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = onNuevoProveedor,
+                onClick = {
+                    viewModel.limpiarFormulario()
+                    onNuevoProveedor()
+                },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) { Icon(Icons.Default.Add, contentDescription = "Nuevo") }
