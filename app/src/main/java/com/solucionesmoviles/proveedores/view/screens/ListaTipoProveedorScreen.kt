@@ -24,19 +24,20 @@ import com.solucionesmoviles.proveedores.viewmodel.ProveedorViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ListaPaisesScreen(
+fun ListaTipoProveedorScreen(
     viewModel: ProveedorViewModel,
-    onNuevoPais: () -> Unit,
-    onEditarPais: (Int) -> Unit,
+    onNuevo: () -> Unit,
+    onEditar: (Int) -> Unit,
     onNavegar: (String) -> Unit
 ) {
-    val listaCompleta by viewModel.listaPaisesTodos.collectAsState()
+    // Obtenemos la lista desde el ViewModel
+    val listaCompleta by viewModel.listaTiposTodos.collectAsState()
 
-    // 1. ESTADO PARA EL TEXTO DE BÚSQUEDA
+    // 1. ESTADO DE BÚSQUEDA
     var textoBusqueda by remember { mutableStateOf("") }
 
-    // 2. FILTRADO LOCAL (Por nombre o código)
-    val paisesFiltrados = listaCompleta.filter {
+    // 2. LÓGICA DE FILTRADO
+    val tiposFiltrados = listaCompleta.filter {
         it.nombre.contains(textoBusqueda, ignoreCase = true) ||
                 it.codigo.contains(textoBusqueda, ignoreCase = true)
     }
@@ -44,16 +45,17 @@ fun ListaPaisesScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Países", fontWeight = FontWeight.Bold) },
+                title = { Text("Tipos de Prov.", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
                 )
             )
         },
-        bottomBar = { BottomNavBar(itemSeleccionado = "paises", onNavegar = onNavegar) },
+        bottomBar = { BottomNavBar(itemSeleccionado = "tipos", onNavegar = onNavegar) },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = onNuevoPais,
+                onClick = onNuevo,
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) { Icon(Icons.Default.Add, contentDescription = "Nuevo") }
@@ -62,12 +64,12 @@ fun ListaPaisesScreen(
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp)) {
 
-            // 3. BARRA DE BÚSQUEDA (Igual a la de proveedores)
+            // 3. CAMPO DE TEXTO (BUSCADOR)
             OutlinedTextField(
                 value = textoBusqueda,
                 onValueChange = { textoBusqueda = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Buscar país...") },
+                placeholder = { Text("Buscar tipo...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
@@ -79,14 +81,14 @@ fun ListaPaisesScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 4. LISTA (Usamos 'paisesFiltrados' en lugar de la lista completa)
+            // 4. LISTA FILTRADA
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(paisesFiltrados) { pais ->
-                    val esEliminado = pais.estado == "*"
+                items(tiposFiltrados) { tipo ->
+                    val esEliminado = tipo.estado == "*"
                     Card(
-                        onClick = { if (!esEliminado) onEditarPais(pais.id) },
+                        onClick = { if (!esEliminado) onEditar(tipo.id) },
                         enabled = !esEliminado,
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         shape = RoundedCornerShape(12.dp),
@@ -97,17 +99,22 @@ fun ListaPaisesScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
-                                modifier = Modifier.size(40.dp).clip(CircleShape).background(if (esEliminado) Color.Gray else MaterialTheme.colorScheme.tertiary),
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(if (esEliminado) Color.Gray else MaterialTheme.colorScheme.tertiary),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(pais.codigo.take(2), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiary)
+                                Text(tipo.nombre.take(1), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiary)
                             }
                             Spacer(modifier = Modifier.width(16.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(pais.nombre, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                Text("Cód: ${pais.codigo}", fontSize = 12.sp, color = Color.Gray)
+                                Text(tipo.nombre, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                Text("Cód: ${tipo.codigo}", fontSize = 12.sp, color = Color.Gray)
                             }
-                            EstadoChipPais(estado = pais.estado)
+                            // Reusamos el chip de Categoría o creamos uno propio.
+                            // Aquí creo uno local rápido para no depender de otro archivo.
+                            EstadoChipTipo(estado = tipo.estado)
                         }
                     }
                 }
@@ -117,7 +124,7 @@ fun ListaPaisesScreen(
 }
 
 @Composable
-fun EstadoChipPais(estado: String) {
+fun EstadoChipTipo(estado: String) {
     val (containerColor, contentColor, texto) = when (estado) {
         "A" -> Triple(Color(0xFFDCFCE7), Color(0xFF166534), "Activo")
         "I" -> Triple(Color(0xFFFFEDD5), Color(0xFF9A3412), "Inactivo")

@@ -7,10 +7,11 @@ import androidx.room.RoomDatabase
 import com.solucionesmoviles.proveedores.model.Categoria
 import com.solucionesmoviles.proveedores.model.Pais
 import com.solucionesmoviles.proveedores.model.Proveedor
+import com.solucionesmoviles.proveedores.model.TipoProveedor
 
 @Database(
-    entities = [Proveedor::class, Pais::class, Categoria::class],
-    version = 1,
+    entities = [Proveedor::class, Pais::class, Categoria::class, TipoProveedor::class],
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -18,6 +19,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun proveedorDao(): ProveedorDao
     abstract fun paisDao(): PaisDao
     abstract fun categoriaDao(): CategoriaDao
+    abstract fun tipoProveedorDao(): TipoProveedorDao
 
     companion object {
         @Volatile

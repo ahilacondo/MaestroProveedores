@@ -11,6 +11,7 @@ import com.solucionesmoviles.proveedores.data.UserPreferencesRepository
 import com.solucionesmoviles.proveedores.model.Categoria
 import com.solucionesmoviles.proveedores.model.Pais
 import com.solucionesmoviles.proveedores.model.Proveedor
+import com.solucionesmoviles.proveedores.model.TipoProveedor
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +30,7 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
     private val proveedorDao = db.proveedorDao()
     private val paisDao = db.paisDao()
     private val categoriaDao = db.categoriaDao()
+    private val tipoProveedorDao = db.tipoProveedorDao()
 
     // --- PREFERENCIAS DE TEMA ---
     private val userPreferences = UserPreferencesRepository(application)
@@ -42,17 +44,17 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    // --- VARIABLES TEMPORALES PARA EL FORMULARIO (Persistencia) ---
+    // --- VARIABLES TEMPORALES PARA EL FORMULARIO ---
     var nombreFormulario by mutableStateOf("")
     var rucFormulario by mutableStateOf("")
-    var tipoFormulario by mutableStateOf("Nacional")
+    // ELIMINADO: var tipoFormulario (Ya no se usa, ahora se maneja por ID en la pantalla)
 
     var formularioCargadoId by mutableStateOf<Int?>(null)
 
     fun limpiarFormulario() {
         nombreFormulario = ""
         rucFormulario = ""
-        tipoFormulario = "Nacional"
+        // ELIMINADO: tipoFormulario = "Nacional"
         formularioCargadoId = null
     }
 
@@ -60,7 +62,7 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
         if (formularioCargadoId != id) {
             nombreFormulario = proveedor.nombre
             rucFormulario = proveedor.ruc
-            tipoFormulario = proveedor.tipoProveedor
+            // ELIMINADO: tipoFormulario = proveedor.tipoProveedor (Esto causaba el error)
             formularioCargadoId = id
         }
     }
@@ -72,7 +74,7 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
     private val _ordenarPorNombre = MutableStateFlow(true)
     val ordenarPorNombre = _ordenarPorNombre.asStateFlow()
 
-    // 3. LISTA MAESTRA PROVEEDORES (Eliminados al final)
+    // 3. LISTA MAESTRA PROVEEDORES
     @OptIn(ExperimentalCoroutinesApi::class)
     val listaProveedores: Flow<List<Proveedor>> = combine(
         _searchQuery,
@@ -86,35 +88,34 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
             } else {
                 lista.sortedBy { it.ruc }
             }
-            // Eliminados (*) al final
             listaOrdenada.sortedBy { it.estado == "*" }
         }
     }
 
-    // 4. LISTAS AUXILIARES
+    // 4. LISTAS AUXILIARES Y DE MANTENIMIENTO
 
-    // Selectores (Solo Activos "A") - No requieren cambios, la BD ya filtra
+    // --- PAÍSES ---
     val listaPaisesActivos = paisDao.getActivos()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val listaPaisesTodos = paisDao.getAll()
+        .map { lista -> lista.sortedBy { it.estado == "*" } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // --- CATEGORÍAS ---
     val listaCategoriasActivas = categoriaDao.getActivos()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // --- CORRECCIÓN AQUÍ ---
-    // Listas completas para Mantenimientos (Ahora con Eliminados al final)
-
-    val listaPaisesTodos = paisDao.getAll()
-        .map { lista ->
-            // Ordenamos para que los eliminados (*) vayan al fondo
-            lista.sortedBy { it.estado == "*" }
-        }
+    val listaCategoriasTodas = categoriaDao.getAll()
+        .map { lista -> lista.sortedBy { it.estado == "*" } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val listaCategoriasTodas = categoriaDao.getAll()
-        .map { lista ->
-            // Ordenamos para que los eliminados (*) vayan al fondo
-            lista.sortedBy { it.estado == "*" }
-        }
+    // --- TIPOS DE PROVEEDOR ---
+    val listaTiposTodos = tipoProveedorDao.getAll()
+        .map { lista -> lista.sortedBy { it.estado == "*" } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val listaTiposActivos = tipoProveedorDao.getActivos()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
 
@@ -127,7 +128,7 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
         _ordenarPorNombre.value = !_ordenarPorNombre.value
     }
 
-    // 6. OPERACIONES CRUD
+    // 6. OPERACIONES CRUD - PROVEEDOR
     fun guardarProveedor(proveedor: Proveedor) {
         viewModelScope.launch {
             if (proveedor.id == 0) {
@@ -152,7 +153,7 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
 
     suspend fun getProveedorById(id: Int): Proveedor? = proveedorDao.getById(id)
 
-    // VALIDACIONES (Regla 2)
+    // VALIDACIONES
     suspend fun puedeInactivarPais(id: Int): Boolean {
         return proveedorDao.contarPorPais(id) == 0
     }
@@ -162,7 +163,7 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
 
-    // --- PAÍSES ---
+    // 7. OPERACIONES CRUD - PAÍSES
     fun guardarPais(pais: Pais) {
         viewModelScope.launch {
             if (pais.id == 0) {
@@ -189,7 +190,7 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
     suspend fun getPaisById(id: Int): Pais? = paisDao.getById(id)
 
 
-    // --- CATEGORÍAS ---
+    // 8. OPERACIONES CRUD - CATEGORÍAS
     fun guardarCategoria(categoria: Categoria) {
         viewModelScope.launch {
             if (categoria.id == 0) {
@@ -214,4 +215,30 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     suspend fun getCategoriaById(id: Int): Categoria? = categoriaDao.getById(id)
+
+    // 9. OPERACIONES CRUD - TIPO PROVEEDOR
+    fun guardarTipoProveedor(tipo: TipoProveedor) {
+        viewModelScope.launch {
+            if (tipo.id == 0) {
+                val codigoAuto = "TP-${System.currentTimeMillis().toString().takeLast(4)}"
+                tipoProveedorDao.insert(tipo.copy(codigo = codigoAuto))
+            } else {
+                tipoProveedorDao.update(tipo)
+            }
+        }
+    }
+
+    fun inactivarTipoProveedor(tipo: TipoProveedor) = viewModelScope.launch {
+        tipoProveedorDao.update(tipo.copy(estado = "I"))
+    }
+
+    fun reactivarTipoProveedor(tipo: TipoProveedor) = viewModelScope.launch {
+        tipoProveedorDao.update(tipo.copy(estado = "A"))
+    }
+
+    fun eliminarTipoProveedor(tipo: TipoProveedor) = viewModelScope.launch {
+        tipoProveedorDao.update(tipo.copy(estado = "*"))
+    }
+
+    suspend fun getTipoProveedorById(id: Int): TipoProveedor? = tipoProveedorDao.getById(id)
 }

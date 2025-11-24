@@ -12,6 +12,8 @@ import androidx.compose.ui.unit.sp
 import com.solucionesmoviles.proveedores.model.Categoria
 import com.solucionesmoviles.proveedores.viewmodel.ProveedorViewModel
 import kotlinx.coroutines.launch
+// IMPORTANTE: Usamos tu componente reutilizable
+import com.solucionesmoviles.proveedores.view.components.CampoTextoSimple
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,6 +28,9 @@ fun FormularioCategoriaScreen(
     var catActual by remember { mutableStateOf<Categoria?>(null) }
     val esEdicion = idCategoria != 0
 
+    // 1. ESTADO DE ERROR PARA VALIDACIÓN
+    var errorNombre by remember { mutableStateOf<String?>(null) }
+
     // Estados para alertas y validaciones
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -35,6 +40,24 @@ fun FormularioCategoriaScreen(
     // LÓGICA DE BLOQUEO
     val esEliminado = catActual?.estado == "*"
     val habilitado = !esEliminado
+
+    // 2. FUNCIÓN DE VALIDACIÓN
+    fun validar(): Boolean {
+        if (nombre.isBlank()) {
+            errorNombre = "El nombre es obligatorio"
+            return false
+        }
+        if (nombre.length < 3) {
+            errorNombre = "Mínimo 3 letras"
+            return false
+        }
+        // Solo letras y espacios (sin números)
+        if (!nombre.matches(Regex("^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+$"))) {
+            errorNombre = "No se permiten números ni símbolos"
+            return false
+        }
+        return true
+    }
 
     LaunchedEffect(idCategoria) {
         if (esEdicion) {
@@ -56,7 +79,8 @@ fun FormularioCategoriaScreen(
                 actions = {
                     if (habilitado) {
                         TextButton(onClick = {
-                            if (nombre.isNotBlank()) {
+                            // 3. VALIDAR ANTES DE GUARDAR
+                            if (validar()) {
                                 viewModel.guardarCategoria(
                                     Categoria(
                                         id = if (esEdicion) idCategoria else 0,
@@ -81,12 +105,19 @@ fun FormularioCategoriaScreen(
                         Text(text = "Código: $codigoActual", color = Color.Gray, fontSize = 12.sp)
                         Spacer(modifier = Modifier.height(8.dp))
                     }
+
+                    // 4. CAMPO DE TEXTO MEJORADO
                     CampoTextoSimple(
                         label = "Nombre",
                         valor = nombre,
                         placeholder = "Ej: Lácteos",
-                        enabled = habilitado, // <--- BLOQUEO
-                        onChange = { nombre = it }
+                        enabled = habilitado,
+                        isError = errorNombre != null, // Rojo si hay error
+                        errorText = errorNombre,       // Texto del error
+                        onChange = {
+                            nombre = it
+                            errorNombre = null // Limpiar error al escribir
+                        }
                     )
                 }
             }

@@ -7,36 +7,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.solucionesmoviles.proveedores.viewmodel.ProveedorViewModel
-
-// IMPORTAMOS TUS PANTALLAS REALES
-import com.solucionesmoviles.proveedores.view.screens.LoginScreen
-import com.solucionesmoviles.proveedores.view.screens.HomeScreen
-import com.solucionesmoviles.proveedores.view.screens.ListaProveedoresScreen
-import com.solucionesmoviles.proveedores.view.screens.FormularioProveedorScreen
-import com.solucionesmoviles.proveedores.view.screens.SelectorPaisScreen
-import com.solucionesmoviles.proveedores.view.screens.SelectorCategoriaScreen
-import com.solucionesmoviles.proveedores.view.screens.ListaPaisesScreen
-import com.solucionesmoviles.proveedores.view.screens.FormularioPaisScreen
-import com.solucionesmoviles.proveedores.view.screens.ListaCategoriasScreen
-import com.solucionesmoviles.proveedores.view.screens.FormularioCategoriaScreen
-import com.solucionesmoviles.proveedores.view.screens.AjustesScreen
+import com.solucionesmoviles.proveedores.view.screens.*
 
 @Composable
 fun AppNavigation(viewModel: ProveedorViewModel) {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = "login") {
-
-        // 1. PANTALLA DE LOGIN (Inicio)
-        composable("login") {
-            LoginScreen(
-                onLoginSuccess = {
-                    navController.navigate("home") {
-                        popUpTo("login") { inclusive = true }
-                    }
-                }
-            )
-        }
+    // 1. CONFIGURACIÓN INICIAL: Arranca directo en "home" (Login eliminado)
+    NavHost(navController = navController, startDestination = "home") {
 
         // 2. MENU PRINCIPAL (Home)
         composable("home") {
@@ -69,23 +47,27 @@ fun AppNavigation(viewModel: ProveedorViewModel) {
         ) { entry ->
             val id = entry.arguments?.getInt("id") ?: 0
 
+            // Recuperamos los IDs seleccionados de los selectores
             val savedStateHandle = entry.savedStateHandle
             val paisSeleccionadoId = savedStateHandle.get<Int>("pais_id")
             val categoriaSeleccionadaId = savedStateHandle.get<Int>("categoria_id")
+            val tipoSeleccionadoId = savedStateHandle.get<Int>("tipo_id") // <--- NUEVO
 
             FormularioProveedorScreen(
                 viewModel = viewModel,
                 idProveedor = id,
                 idPaisSeleccionado = paisSeleccionadoId,
                 idCategoriaSeleccionada = categoriaSeleccionadaId,
+                idTipoSeleccionado = tipoSeleccionadoId, // <--- PASAMOS EL ID
                 onSeleccionarPais = { navController.navigate("seleccion_pais") },
                 onSeleccionarCategoria = { navController.navigate("seleccion_categoria") },
+                onSeleccionarTipo = { navController.navigate("seleccion_tipo") }, // <--- NUEVA RUTA
                 onGuardarFinalizado = { navController.popBackStack() },
                 onCancelar = { navController.popBackStack() }
             )
         }
 
-        // 5. SELECTORES (Pantallas Reales)
+        // 5. SELECTORES (Pantallas para elegir País, Categoría y Tipo)
         composable("seleccion_pais") {
             SelectorPaisScreen(
                 viewModel = viewModel,
@@ -97,7 +79,6 @@ fun AppNavigation(viewModel: ProveedorViewModel) {
             )
         }
 
-        // --- AQUÍ ESTABA EL ERROR: Solo debe haber UNA definición de seleccion_categoria ---
         composable("seleccion_categoria") {
             SelectorCategoriaScreen(
                 viewModel = viewModel,
@@ -109,7 +90,18 @@ fun AppNavigation(viewModel: ProveedorViewModel) {
             )
         }
 
-        // 6. MANTENIMIENTOS COMPLETOS
+        composable("seleccion_tipo") { // <--- NUEVA PANTALLA DE SELECCIÓN
+            SelectorTipoProveedorScreen(
+                viewModel = viewModel,
+                onTipoSeleccionado = { id ->
+                    navController.previousBackStackEntry?.savedStateHandle?.set("tipo_id", id)
+                    navController.popBackStack()
+                },
+                onCancelar = { navController.popBackStack() }
+            )
+        }
+
+        // 6. MANTENIMIENTOS COMPLETOS (Tablas auxiliares)
 
         // --- PAÍSES ---
         composable("paises_lista") {
@@ -154,6 +146,27 @@ fun AppNavigation(viewModel: ProveedorViewModel) {
                 onCancelar = { navController.popBackStack() }
             )
         }
+
+        // --- TIPOS DE PROVEEDOR ---
+        composable("tipos_lista") {
+            ListaTipoProveedorScreen(
+                viewModel = viewModel,
+                onNuevo = { navController.navigate("crear_tipo/0") },
+                onEditar = { id -> navController.navigate("crear_tipo/$id") },
+                onNavegar = { ruta -> navController.navigate(ruta) }
+            )
+        }
+        composable(
+            route = "crear_tipo/{id}",
+            arguments = listOf(navArgument("id") { type = NavType.IntType })
+        ) { entry ->
+            val id = entry.arguments?.getInt("id") ?: 0
+            FormularioTipoProveedorScreen(
+                viewModel = viewModel,
+                idTipo = id,
+                onGuardarFinalizado = { navController.popBackStack() },
+                onCancelar = { navController.popBackStack() }
+            )
+        }
     }
 }
-

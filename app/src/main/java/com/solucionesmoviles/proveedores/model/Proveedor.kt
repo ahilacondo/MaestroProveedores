@@ -7,19 +7,24 @@ import androidx.room.PrimaryKey
 @Entity(
     tableName = "proveedores",
     foreignKeys = [
-        // Relación con PAÍS (Si borras el país, no deja borrar el proveedor)
-        ForeignKey(
+        androidx.room.ForeignKey(
             entity = Pais::class,
             parentColumns = ["id"],
             childColumns = ["paisId"],
-            onDelete = ForeignKey.RESTRICT
+            onDelete = androidx.room.ForeignKey.RESTRICT
         ),
-        // Relación con CATEGORÍA
-        ForeignKey(
+        androidx.room.ForeignKey(
             entity = Categoria::class,
             parentColumns = ["id"],
             childColumns = ["categoriaId"],
-            onDelete = ForeignKey.RESTRICT
+            onDelete = androidx.room.ForeignKey.RESTRICT
+        ),
+        // NUEVA RELACIÓN
+        androidx.room.ForeignKey(
+            entity = TipoProveedor::class,
+            parentColumns = ["id"],
+            childColumns = ["tipoProveedorId"],
+            onDelete = androidx.room.ForeignKey.RESTRICT
         )
     ]
 )
@@ -27,8 +32,8 @@ data class Proveedor(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val nombre: String,
     val ruc: String,
-    val tipoProveedor: String, // "Nacional", "Internacional", etc.
-    val paisId: Int,           // Aquí guardamos el ID del País (No el nombre)
-    val categoriaId: Int,      // Aquí guardamos el ID de la Categoría
+    val tipoProveedorId: Int,
+    val paisId: Int,
+    val categoriaId: Int,
     val estado: String = "A"
 )

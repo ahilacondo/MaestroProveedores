@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,12 +30,21 @@ fun ListaCategoriasScreen(
     onEditarCategoria: (Int) -> Unit,
     onNavegar: (String) -> Unit
 ) {
-    val categorias by viewModel.listaCategoriasTodas.collectAsState()
+    val listaCompleta by viewModel.listaCategoriasTodas.collectAsState()
+
+    // 1. ESTADO DE BÚSQUEDA
+    var textoBusqueda by remember { mutableStateOf("") }
+
+    // 2. LÓGICA DE FILTRADO
+    val categoriasFiltradas = listaCompleta.filter {
+        it.nombre.contains(textoBusqueda, ignoreCase = true) ||
+                it.codigo.contains(textoBusqueda, ignoreCase = true)
+    }
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Mantenimiento Categorías", fontWeight = FontWeight.Bold) },
+                title = { Text("Categorías", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     titleContentColor = MaterialTheme.colorScheme.onBackground
@@ -51,38 +61,58 @@ fun ListaCategoriasScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(categorias) { cat ->
-                val esEliminado = cat.estado == "*"
-                Card(
-                    // REGLA: Si está eliminado, no se puede editar.
-                    onClick = {
-                        if (!esEliminado) onEditarCategoria(cat.id)
-                    },
-                    enabled = !esEliminado,
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.alpha(if (esEliminado) 0.6f else 1f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+        Column(modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp)) {
+
+            // 3. CAMPO DE TEXTO (BUSCADOR)
+            OutlinedTextField(
+                value = textoBusqueda,
+                onValueChange = { textoBusqueda = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Buscar categoría...") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                )
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 4. LISTA FILTRADA
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(categoriasFiltradas) { cat ->
+                    val esEliminado = cat.estado == "*"
+                    Card(
+                        onClick = { if (!esEliminado) onEditarCategoria(cat.id) },
+                        enabled = !esEliminado,
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.alpha(if (esEliminado) 0.6f else 1f)
                     ) {
-                        Box(
-                            modifier = Modifier.size(40.dp).clip(CircleShape).background(if (esEliminado) Color.Gray else MaterialTheme.colorScheme.tertiary),
-                            contentAlignment = Alignment.Center
+                        Row(
+                            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(cat.nombre.take(1), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiary)
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(if (esEliminado) Color.Gray else MaterialTheme.colorScheme.tertiary),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(cat.nombre.take(1), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiary)
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(cat.nombre, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                Text("Cód: ${cat.codigo}", fontSize = 12.sp, color = Color.Gray)
+                            }
+                            EstadoChipCategoria(estado = cat.estado)
                         }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(cat.nombre, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                            Text("Cód: ${cat.codigo}", fontSize = 12.sp, color = Color.Gray)
-                        }
-                        EstadoChipCategoria(estado = cat.estado)
                     }
                 }
             }

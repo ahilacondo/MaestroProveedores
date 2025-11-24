@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.solucionesmoviles.proveedores.model.Proveedor
+import com.solucionesmoviles.proveedores.model.TipoProveedor
 import com.solucionesmoviles.proveedores.view.components.BottomNavBar
 import com.solucionesmoviles.proveedores.viewmodel.ProveedorViewModel
 
@@ -37,6 +38,9 @@ fun ListaProveedoresScreen(
     onNavegar: (String) -> Unit
 ) {
     val proveedores by viewModel.listaProveedores.collectAsState(initial = emptyList())
+    // 1. NUEVO: Obtenemos la lista de tipos para poder buscar los nombres
+    val tipos by viewModel.listaTiposTodos.collectAsState(initial = emptyList())
+
     val textoBusqueda by viewModel.searchQuery.collectAsState()
     val ordenadoPorNombre by viewModel.ordenarPorNombre.collectAsState()
 
@@ -101,9 +105,10 @@ fun ListaProveedoresScreen(
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(proveedores) { proveedor ->
+                        // 2. Pasamos la lista de tipos al item para que busque el nombre
                         ProveedorItem(
                             proveedor = proveedor,
-                            // REGLA: Si está eliminado (*), NO HACEMOS NADA al hacer click.
+                            tipos = tipos, // <--- PASAMOS LA LISTA
                             onClick = {
                                 if (proveedor.estado != "*") {
                                     onEditarProveedor(proveedor.id)
@@ -118,17 +123,22 @@ fun ListaProveedoresScreen(
 }
 
 @Composable
-fun ProveedorItem(proveedor: Proveedor, onClick: () -> Unit) {
+fun ProveedorItem(
+    proveedor: Proveedor,
+    tipos: List<TipoProveedor>, // <--- RECIBIMOS LA LISTA
+    onClick: () -> Unit
+) {
     val esEliminado = proveedor.estado == "*"
+
+    // 3. LÓGICA DE BÚSQUEDA: Buscamos el nombre correspondiente al ID guardado
+    val nombreTipo = tipos.find { it.id == proveedor.tipoProveedorId }?.nombre ?: "Sin Tipo"
 
     Card(
         onClick = onClick,
-        // Deshabilitamos el efecto visual de click si está eliminado
         enabled = !esEliminado,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(12.dp),
-        // Opacidad reducida si está eliminado para que parezca "fantasma"
         modifier = Modifier.alpha(if (esEliminado) 0.6f else 1f)
     ) {
         Row(
@@ -154,10 +164,15 @@ fun ProveedorItem(proveedor: Proveedor, onClick: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = proveedor.nombre, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
                 Text(text = "RUC: ${proveedor.ruc}", fontSize = 14.sp, color = Color.Gray)
-                Text(text = proveedor.tipoProveedor, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+
+                // 4. AQUÍ ESTÁ LA SOLUCIÓN: Mostramos el nombre encontrado, no el objeto ni el ID
+                Text(
+                    text = nombreTipo, // <--- CAMBIO CORRECTO
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
 
-            // Pasamos el estado (letra) en lugar de booleano
             EstadoChip(estado = proveedor.estado)
         }
     }
@@ -165,14 +180,10 @@ fun ProveedorItem(proveedor: Proveedor, onClick: () -> Unit) {
 
 @Composable
 fun EstadoChip(estado: String) {
-    // LÓGICA DE COLORES SOLICITADA:
-    // A (Activo) -> Verde
-    // I (Inactivo) -> Naranja
-    // * (Eliminado) -> Rojo
     val (containerColor, contentColor, texto) = when (estado) {
         "A" -> Triple(Color(0xFFDCFCE7), Color(0xFF166534), "Activo")
-        "I" -> Triple(Color(0xFFFFEDD5), Color(0xFF9A3412), "Inactivo") // Naranja
-        "*" -> Triple(Color(0xFFFEE2E2), Color(0xFF991B1B), "Eliminado") // Rojo
+        "I" -> Triple(Color(0xFFFFEDD5), Color(0xFF9A3412), "Inactivo")
+        "*" -> Triple(Color(0xFFFEE2E2), Color(0xFF991B1B), "Eliminado")
         else -> Triple(Color.Gray, Color.White, "Desc.")
     }
 

@@ -1,14 +1,9 @@
 package com.solucionesmoviles.proveedores.view.screens
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -16,6 +11,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.solucionesmoviles.proveedores.model.Proveedor
 import com.solucionesmoviles.proveedores.viewmodel.ProveedorViewModel
+import com.solucionesmoviles.proveedores.view.components.CampoTextoSimple
+import com.solucionesmoviles.proveedores.view.components.SelectorItem
+import kotlinx.coroutines.launch // Necesario para el Snackbar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,50 +22,92 @@ fun FormularioProveedorScreen(
     idProveedor: Int,
     idPaisSeleccionado: Int?,
     idCategoriaSeleccionada: Int?,
+    idTipoSeleccionado: Int?,
     onSeleccionarPais: () -> Unit,
     onSeleccionarCategoria: () -> Unit,
+    onSeleccionarTipo: () -> Unit,
     onGuardarFinalizado: () -> Unit,
     onCancelar: () -> Unit
 ) {
-    // 1. LEEMOS LOS DATOS DESDE EL VIEWMODEL
+    // VARIABLES DEL VIEWMODEL
     val nombre = viewModel.nombreFormulario
     val ruc = viewModel.rucFormulario
-    val tipoProveedor = viewModel.tipoFormulario
 
-    val tiposDisponibles = listOf("Nacional", "Internacional", "Local", "Personal")
-    var expandirMenuTipo by remember { mutableStateOf(false) }
+    // VARIABLES DE VALIDACIÓN
+    var errorNombre by remember { mutableStateOf<String?>(null) }
+    var errorRuc by remember { mutableStateOf<String?>(null) }
 
+    // NUEVO: Variable para saber si el usuario ya intentó guardar
+    // Esto sirve para mostrar los errores rojos SOLO después de pulsar el botón
+    var intentoGuardar by remember { mutableStateOf(false) }
+
+    // VARIABLES DE SELECCIÓN
     var selectedPaisId by remember { mutableIntStateOf(0) }
     var selectedCategoriaId by remember { mutableIntStateOf(0) }
+    var selectedTipoId by remember { mutableIntStateOf(0) }
 
-    // CORRECCIÓN VISUAL: Inicializamos con "Seleccionar"
+    // NOMBRES VISUALES
     var nombrePais by remember { mutableStateOf("Seleccionar") }
     var nombreCategoria by remember { mutableStateOf("Seleccionar") }
+    var nombreTipo by remember { mutableStateOf("Seleccionar") }
 
     var proveedorActual by remember { mutableStateOf<Proveedor?>(null) }
     val esEdicion = idProveedor != 0
     val esEliminado = proveedorActual?.estado == "*"
     val habilitado = !esEliminado
 
-    // 2. CARGA INICIAL DE DATOS (EDICIÓN)
+    // ESTADOS DE UI
+    var mostrarDialogoInactivar by remember { mutableStateOf(false) }
+    var mostrarDialogoEliminar by remember { mutableStateOf(false) }
+
+    // NUEVO: Estado para el mensaje emergente (Snackbar)
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    // FUNCIÓN DE VALIDACIÓN
+    fun validar(): Boolean {
+        var esValido = true
+
+        // Validar Nombre
+        if (nombre.length < 3) {
+            errorNombre = "Mínimo 3 caracteres"
+            esValido = false
+        } else if (!nombre.matches(Regex("^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9 .&-]+$"))) {
+            errorNombre = "Caracteres inválidos"
+            esValido = false
+        } else {
+            errorNombre = null
+        }
+
+        // Validar RUC
+        if (ruc.length != 11) {
+            errorRuc = "Debe tener 11 dígitos"
+            esValido = false
+        } else {
+            errorRuc = null
+        }
+
+        return esValido
+    }
+
+    // CARGAS INICIALES Y RECUPERACIÓN (Igual que antes)
     LaunchedEffect(idProveedor) {
         if (esEdicion) {
             val prov = viewModel.getProveedorById(idProveedor)
             prov?.let {
                 proveedorActual = it
-                viewModel.cargarDatosParaEdicion(idProveedor, it)
+                viewModel.nombreFormulario = it.nombre
+                viewModel.rucFormulario = it.ruc
+                selectedPaisId = it.paisId
+                selectedCategoriaId = it.categoriaId
+                selectedTipoId = it.tipoProveedorId
 
-                // Cargar IDs
-                if (selectedPaisId == 0) selectedPaisId = it.paisId
-                if (selectedCategoriaId == 0) selectedCategoriaId = it.categoriaId
-
-                // CORRECCIÓN VISUAL: BUSCAMOS EL NOMBRE REAL EN LA BD
-                // En lugar de poner "ID: 5", buscamos "Perú"
                 val p = viewModel.getPaisById(it.paisId)
-                nombrePais = p?.nombre ?: "Desconocido (ID: ${it.paisId})"
-
+                nombrePais = p?.nombre ?: "Desconocido"
                 val c = viewModel.getCategoriaById(it.categoriaId)
-                nombreCategoria = c?.nombre ?: "Desconocido (ID: ${it.categoriaId})"
+                nombreCategoria = c?.nombre ?: "Desconocido"
+                val t = viewModel.getTipoProveedorById(it.tipoProveedorId)
+                nombreTipo = t?.nombre ?: "Desconocido"
             }
         } else {
             if (viewModel.formularioCargadoId != 0) {
@@ -77,27 +117,30 @@ fun FormularioProveedorScreen(
         }
     }
 
-    // 3. RECUPERAR SELECCIÓN DE PAÍS (AL VOLVER)
     LaunchedEffect(idPaisSeleccionado) {
         if (idPaisSeleccionado != null) {
             selectedPaisId = idPaisSeleccionado
-            // CORRECCIÓN VISUAL: Buscamos el nombre del ID seleccionado
             val p = viewModel.getPaisById(idPaisSeleccionado)
             nombrePais = p?.nombre ?: "Cargando..."
         }
     }
-
-    // 4. RECUPERAR SELECCIÓN DE CATEGORÍA (AL VOLVER)
     LaunchedEffect(idCategoriaSeleccionada) {
         if (idCategoriaSeleccionada != null) {
             selectedCategoriaId = idCategoriaSeleccionada
-            // CORRECCIÓN VISUAL: Buscamos el nombre del ID seleccionado
             val c = viewModel.getCategoriaById(idCategoriaSeleccionada)
             nombreCategoria = c?.nombre ?: "Cargando..."
         }
     }
+    LaunchedEffect(idTipoSeleccionado) {
+        if (idTipoSeleccionado != null) {
+            selectedTipoId = idTipoSeleccionado
+            val t = viewModel.getTipoProveedorById(idTipoSeleccionado)
+            nombreTipo = t?.nombre ?: "Cargando..."
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }, // NUEVO: Aquí se muestra el mensaje
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text(if (esEdicion) "Editar Proveedor" else "Crear Proveedor", fontWeight = FontWeight.Bold) },
@@ -107,18 +150,30 @@ fun FormularioProveedorScreen(
                 actions = {
                     if (habilitado) {
                         TextButton(onClick = {
-                            if (nombre.isNotBlank() && ruc.isNotBlank() && selectedPaisId != 0 && selectedCategoriaId != 0) {
+                            // 1. MARCAMOS QUE SE INTENTÓ GUARDAR
+                            intentoGuardar = true
+
+                            // 2. VALIDAMOS TODO
+                            val formularioValido = validar()
+                            val selectoresValidos = selectedPaisId != 0 && selectedCategoriaId != 0 && selectedTipoId != 0
+
+                            if (formularioValido && selectoresValidos) {
                                 val nuevoProv = Proveedor(
                                     id = if (esEdicion) idProveedor else 0,
                                     nombre = nombre,
                                     ruc = ruc,
-                                    tipoProveedor = tipoProveedor,
+                                    tipoProveedorId = selectedTipoId,
                                     paisId = selectedPaisId,
                                     categoriaId = selectedCategoriaId,
                                     estado = proveedorActual?.estado ?: "A"
                                 )
                                 viewModel.guardarProveedor(nuevoProv)
                                 onGuardarFinalizado()
+                            } else {
+                                // 3. SI FALLA, MOSTRAMOS EL MENSAJE
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Faltan campos por completar")
+                                }
                             }
                         }) {
                             Text("Guardar", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
@@ -150,7 +205,12 @@ fun FormularioProveedorScreen(
                         valor = nombre,
                         placeholder = "Ej: Molitalia S.A.",
                         enabled = habilitado,
-                        onChange = { viewModel.nombreFormulario = it }
+                        isError = errorNombre != null,
+                        errorText = errorNombre,
+                        onChange = {
+                            viewModel.nombreFormulario = it
+                            errorNombre = null
+                        }
                     )
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp, color = Color.Gray)
                     CampoTextoSimple(
@@ -158,81 +218,70 @@ fun FormularioProveedorScreen(
                         valor = ruc,
                         placeholder = "Ej: 201000...",
                         enabled = habilitado,
-                        onChange = { viewModel.rucFormulario = it }
+                        esNumerico = true,
+                        isError = errorRuc != null,
+                        errorText = errorRuc,
+                        onChange = {
+                            if (it.length <= 11) viewModel.rucFormulario = it
+                            errorRuc = null
+                        }
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // GRUPO 2: SELECTORES (Ahora mostrarán nombres bonitos)
+            // GRUPO 2: SELECTORES
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Column {
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        SelectorItem(
-                            label = "Tipo Prov.",
-                            valor = tipoProveedor,
-                            enabled = habilitado,
-                            onClick = { expandirMenuTipo = true }
-                        )
-
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd) // Pegado a la derecha
-                                .padding(top = 40.dp, end = 16.dp) // Bajamos un poco para no tapar el texto
-                        ) {
-                            DropdownMenu(
-                                expanded = expandirMenuTipo,
-                                onDismissRequest = { expandirMenuTipo = false },
-                                modifier = Modifier.background(MaterialTheme.colorScheme.surface)
-                            ) {
-                                tiposDisponibles.forEach { tipo ->
-                                    DropdownMenuItem(
-                                        text = { Text(tipo, color = MaterialTheme.colorScheme.onSurface) },
-                                        onClick = {
-                                            viewModel.tipoFormulario = tipo
-                                            expandirMenuTipo = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
+                    // SELECTOR TIPO
+                    SelectorItem(
+                        label = "Tipo Prov.",
+                        valor = nombreTipo,
+                        enabled = habilitado,
+                        onClick = onSeleccionarTipo
+                    )
+                    // Mensaje de error si falta seleccionar y ya se intentó guardar
+                    if (intentoGuardar && selectedTipoId == 0) {
+                        Text("Campo obligatorio", color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(start = 16.dp, bottom = 8.dp))
                     }
 
                     HorizontalDivider(thickness = 0.5.dp, color = Color.Gray)
 
-                    // Aquí se verá "Categoría: Lácteos" en vez de "ID: 4"
+                    // SELECTOR CATEGORÍA
                     SelectorItem(
                         label = "Categoría",
                         valor = nombreCategoria,
                         enabled = habilitado,
                         onClick = onSeleccionarCategoria
                     )
+                    if (intentoGuardar && selectedCategoriaId == 0) {
+                        Text("Campo obligatorio", color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(start = 16.dp, bottom = 8.dp))
+                    }
 
                     HorizontalDivider(thickness = 0.5.dp, color = Color.Gray)
 
-                    // Aquí se verá "País: Perú" en vez de "ID: 2"
+                    // SELECTOR PAÍS
                     SelectorItem(
                         label = "País",
                         valor = nombrePais,
                         enabled = habilitado,
                         onClick = onSeleccionarPais
                     )
+                    if (intentoGuardar && selectedPaisId == 0) {
+                        Text("Campo obligatorio", color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(start = 16.dp, bottom = 8.dp))
+                    }
                 }
             }
 
+            // GRUPO 3: BOTONES (Solo Edición) - Igual que antes
             if (esEdicion && proveedorActual != null) {
                 Spacer(modifier = Modifier.height(32.dp))
                 val estadoActual = proveedorActual!!.estado
 
-                // DIÁLOGOS
-                var mostrarDialogoInactivar by remember { mutableStateOf(false) }
-                var mostrarDialogoEliminar by remember { mutableStateOf(false) }
-
-                // BOTÓN REACTIVAR / INACTIVAR
                 Button(
                     onClick = {
                         if (estadoActual == "A") {
@@ -252,10 +301,8 @@ fun FormularioProveedorScreen(
                     Text(if (estadoActual == "A") "Inactivar Proveedor" else "Reactivar Proveedor")
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // BOTÓN ELIMINAR (Solo si es INACTIVO)
                 if (estadoActual == "I") {
+                    Spacer(modifier = Modifier.height(12.dp))
                     Button(
                         onClick = { mostrarDialogoEliminar = true },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFEE2E2), contentColor = Color(0xFF991B1B)),
@@ -269,7 +316,7 @@ fun FormularioProveedorScreen(
                 if (mostrarDialogoInactivar) {
                     AlertDialog(
                         onDismissRequest = { mostrarDialogoInactivar = false },
-                        title = { Text("¿Inactivar Proveedor?", fontWeight = FontWeight.Bold) },
+                        title = { Text("¿Inactivar Proveedor?") },
                         text = { Text("El proveedor dejará de estar disponible para nuevas operaciones.") },
                         confirmButton = {
                             TextButton(onClick = {
@@ -287,8 +334,8 @@ fun FormularioProveedorScreen(
                 if (mostrarDialogoEliminar) {
                     AlertDialog(
                         onDismissRequest = { mostrarDialogoEliminar = false },
-                        title = { Text("¿Eliminar definitivamente?", fontWeight = FontWeight.Bold) },
-                        text = { Text("El registro se marcará como eliminado y se archivará al final de la lista.") },
+                        title = { Text("¿Eliminar definitivamente?") },
+                        text = { Text("El registro se marcará como eliminado y se archivará.") },
                         confirmButton = {
                             TextButton(
                                 onClick = {
@@ -304,70 +351,6 @@ fun FormularioProveedorScreen(
                         }
                     )
                 }
-            }
-        }
-    }
-}
-
-// COMPONENTES (Igual que antes)
-@Composable
-fun CampoTextoSimple(
-    label: String,
-    valor: String,
-    placeholder: String,
-    enabled: Boolean = true,
-    onChange: (String) -> Unit
-) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = label,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.width(100.dp),
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        TextField(
-            value = valor,
-            onValueChange = onChange,
-            enabled = enabled,
-            placeholder = { Text(placeholder, color = Color.Gray) },
-            colors = TextFieldDefaults.colors(
-                unfocusedContainerColor = Color.Transparent,
-                focusedContainerColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-                focusedIndicatorColor = Color.Transparent,
-                focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                disabledTextColor = Color.Gray,
-                disabledIndicatorColor = Color.Transparent,
-                disabledContainerColor = Color.Transparent,
-                disabledPlaceholderColor = Color.LightGray
-            ),
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-@Composable
-fun SelectorItem(
-    label: String,
-    valor: String,
-    enabled: Boolean = true,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(text = label, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text = valor, color = if (enabled) Color.Gray else Color.LightGray)
-            Spacer(modifier = Modifier.width(8.dp))
-            if (enabled) {
-                Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(14.dp))
             }
         }
     }

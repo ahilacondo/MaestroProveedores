@@ -2,6 +2,7 @@ package com.solucionesmoviles.proveedores.view.components
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Class
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Public
@@ -15,15 +16,11 @@ import androidx.compose.runtime.Composable
 
 @Composable
 fun BottomNavBar(
-    itemSeleccionado: String, // "inicio", "proveedores", "categorias", "paises"
+    itemSeleccionado: String,
     onNavegar: (String) -> Unit
 ) {
     NavigationBar(
-        // CORRECCIÓN: Usamos el color dinámico del tema
-        // En modo claro será Blanco. En modo oscuro será Gris Oscuro (SuperficieOscura).
         containerColor = MaterialTheme.colorScheme.surface,
-
-        // Color de los íconos no seleccionados (Grisáceo en ambos modos)
         contentColor = MaterialTheme.colorScheme.onSurfaceVariant
     ) {
         // 1. INICIO
@@ -32,44 +29,27 @@ fun BottomNavBar(
             label = { Text("Inicio") },
             selected = itemSeleccionado == "inicio",
             onClick = { onNavegar("home") },
-            colors = NavigationBarItemDefaults.colors(
-                // Color cuando está seleccionado (Azul)
-                indicatorColor = MaterialTheme.colorScheme.tertiary,
-                // Color de íconos/texto cuando NO está seleccionado (Dinámico)
-                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                // Color de íconos/texto cuando SI está seleccionado (Dinámico)
-                selectedIconColor = MaterialTheme.colorScheme.onTertiary,
-                selectedTextColor = MaterialTheme.colorScheme.onSurface
-            )
+            // Esto oculta el texto si no está seleccionado (limpia la vista)
+            alwaysShowLabel = false,
+            colors = obtenerColoresNav()
         )
-        // 2. PROVEEDORES
+        // 2. PROVEEDORES (Nombre corto "Prov.")
         NavigationBarItem(
             icon = { Icon(Icons.Default.Inventory, contentDescription = "Proveedores") },
-            label = { Text("Proveedores") },
+            label = { Text("Prov.") },
             selected = itemSeleccionado == "proveedores",
             onClick = { onNavegar("proveedores") },
-            colors = NavigationBarItemDefaults.colors(
-                indicatorColor = MaterialTheme.colorScheme.tertiary,
-                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                selectedIconColor = MaterialTheme.colorScheme.onTertiary,
-                selectedTextColor = MaterialTheme.colorScheme.onSurface
-            )
+            alwaysShowLabel = false,
+            colors = obtenerColoresNav()
         )
-        // 3. CATEGORÍAS
+        // 3. CATEGORÍAS (Nombre corto "Categ.")
         NavigationBarItem(
             icon = { Icon(Icons.Default.Category, contentDescription = "Categorías") },
-            label = { Text("Categorías") },
+            label = { Text("Categ.") },
             selected = itemSeleccionado == "categorias",
             onClick = { onNavegar("categorias_lista") },
-            colors = NavigationBarItemDefaults.colors(
-                indicatorColor = MaterialTheme.colorScheme.tertiary,
-                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                selectedIconColor = MaterialTheme.colorScheme.onTertiary,
-                selectedTextColor = MaterialTheme.colorScheme.onSurface
-            )
+            alwaysShowLabel = false,
+            colors = obtenerColoresNav()
         )
         // 4. PAÍSES
         NavigationBarItem(
@@ -77,13 +57,26 @@ fun BottomNavBar(
             label = { Text("Países") },
             selected = itemSeleccionado == "paises",
             onClick = { onNavegar("paises_lista") },
-            colors = NavigationBarItemDefaults.colors(
-                indicatorColor = MaterialTheme.colorScheme.tertiary,
-                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                selectedIconColor = MaterialTheme.colorScheme.onTertiary,
-                selectedTextColor = MaterialTheme.colorScheme.onSurface
-            )
+            alwaysShowLabel = false,
+            colors = obtenerColoresNav()
+        )
+        // 5. TIPOS
+        NavigationBarItem(
+            icon = { Icon(Icons.Default.Class, contentDescription = "Tipos") },
+            label = { Text("Tipos") },
+            selected = itemSeleccionado == "tipos",
+            onClick = { onNavegar("tipos_lista") },
+            alwaysShowLabel = false,
+            colors = obtenerColoresNav()
         )
     }
 }
+
+@Composable
+fun obtenerColoresNav() = NavigationBarItemDefaults.colors(
+    indicatorColor = MaterialTheme.colorScheme.tertiary,
+    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    selectedIconColor = MaterialTheme.colorScheme.onTertiary,
+    selectedTextColor = MaterialTheme.colorScheme.onSurface
+)

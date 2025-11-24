@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Class
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -92,12 +93,27 @@ fun HomeScreen(
                     modifier = Modifier.weight(1f),
                     onClick = { onNavegarA("paises_lista") }
                 )
+
+                MenuCard(
+                    titulo = "Tipos Prov.",
+                    icono = Icons.Filled.Class,
+                    modifier = Modifier.weight(1f),
+                    onClick = { onNavegarA("tipos_lista") }
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            //Fila 3
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 MenuCard(
                     titulo = "Ajustes",
                     icono = Icons.Filled.Settings,
                     modifier = Modifier.weight(1f),
                     onClick = { onNavegarA("ajustes") }
                 )
+                Spacer(modifier = Modifier.weight(1f))
             }
         }
     }

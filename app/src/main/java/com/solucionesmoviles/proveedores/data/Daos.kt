@@ -8,6 +8,7 @@ import androidx.room.Update
 import com.solucionesmoviles.proveedores.model.Categoria
 import com.solucionesmoviles.proveedores.model.Pais
 import com.solucionesmoviles.proveedores.model.Proveedor
+import com.solucionesmoviles.proveedores.model.TipoProveedor
 import kotlinx.coroutines.flow.Flow
 
 // 1. DAO PARA PAÍSES
@@ -77,4 +78,22 @@ interface ProveedorDao {
     // Validar si una categoría está siendo usada
     @Query("SELECT COUNT(*) FROM proveedores WHERE categoriaId = :catId AND estado != '*'")
     suspend fun contarPorCategoria(catId: Int): Int
+}
+
+@Dao
+interface TipoProveedorDao {
+    @Query("SELECT * FROM tipos_proveedor ORDER BY nombre ASC")
+    fun getAll(): Flow<List<TipoProveedor>>
+
+    @Query("SELECT * FROM tipos_proveedor WHERE estado = 'A' ORDER BY nombre ASC")
+    fun getActivos(): Flow<List<TipoProveedor>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(tipo: TipoProveedor)
+
+    @Update
+    suspend fun update(tipo: TipoProveedor)
+
+    @Query("SELECT * FROM tipos_proveedor WHERE id = :id")
+    suspend fun getById(id: Int): TipoProveedor?
 }
