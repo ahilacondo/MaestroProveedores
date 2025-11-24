@@ -241,4 +241,28 @@ class ProveedorViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     suspend fun getTipoProveedorById(id: Int): TipoProveedor? = tipoProveedorDao.getById(id)
+
+    // --- VALIDACIONES DE DUPLICADOS ---
+
+    suspend fun existePais(nombre: String, idExcluir: Int): Boolean {
+        // Retorna true si encuentra algun registro (>0)
+        return paisDao.existeNombre(nombre, idExcluir) > 0
+    }
+
+    suspend fun existeCategoria(nombre: String, idExcluir: Int): Boolean {
+        return categoriaDao.existeNombre(nombre, idExcluir) > 0
+    }
+
+    suspend fun existeTipoProveedor(nombre: String, idExcluir: Int): Boolean {
+        return tipoProveedorDao.existeNombre(nombre, idExcluir) > 0
+    }
+
+    suspend fun existeRucProveedor(ruc: String, idExcluir: Int): Boolean {
+        return proveedorDao.existeRuc(ruc, idExcluir) > 0
+    }
+
+    // También agrega esta que faltaba para validar inactivación de tipos
+    suspend fun puedeInactivarTipo(id: Int): Boolean {
+        return proveedorDao.contarPorTipo(id) == 0
+    }
 }
