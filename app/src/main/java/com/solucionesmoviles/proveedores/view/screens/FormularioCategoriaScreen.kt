@@ -11,9 +11,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.solucionesmoviles.proveedores.model.Categoria
 import com.solucionesmoviles.proveedores.viewmodel.ProveedorViewModel
-import kotlinx.coroutines.launch
-// IMPORTANTE: Usamos tu componente reutilizable
 import com.solucionesmoviles.proveedores.view.components.CampoTextoSimple
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,20 +27,21 @@ fun FormularioCategoriaScreen(
     var catActual by remember { mutableStateOf<Categoria?>(null) }
     val esEdicion = idCategoria != 0
 
-    // 1. ESTADO DE ERROR PARA VALIDACIÓN
+    // ESTADO DE ERROR
     var errorNombre by remember { mutableStateOf<String?>(null) }
 
-    // Estados para alertas y validaciones
+    // ESTADOS DE DIÁLOGOS
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     var mostrarDialogoInactivar by remember { mutableStateOf(false) }
     var mostrarDialogoEliminar by remember { mutableStateOf(false) }
+    var mostrarDialogoGuardar by remember { mutableStateOf(false) } // <--- NUEVO
 
     // LÓGICA DE BLOQUEO
     val esEliminado = catActual?.estado == "*"
     val habilitado = !esEliminado
 
-    // 2. FUNCIÓN DE VALIDACIÓN
+    // VALIDACIÓN
     fun validar(): Boolean {
         if (nombre.isBlank()) {
             errorNombre = "El nombre es obligatorio"
@@ -51,7 +51,6 @@ fun FormularioCategoriaScreen(
             errorNombre = "Mínimo 3 letras"
             return false
         }
-        // Solo letras y espacios (sin números)
         if (!nombre.matches(Regex("^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+$"))) {
             errorNombre = "No se permiten números ni símbolos"
             return false
@@ -79,17 +78,9 @@ fun FormularioCategoriaScreen(
                 actions = {
                     if (habilitado) {
                         TextButton(onClick = {
-                            // 3. VALIDAR ANTES DE GUARDAR
                             if (validar()) {
-                                viewModel.guardarCategoria(
-                                    Categoria(
-                                        id = if (esEdicion) idCategoria else 0,
-                                        codigo = if (esEdicion) codigoActual else "",
-                                        nombre = nombre,
-                                        estado = catActual?.estado ?: "A"
-                                    )
-                                )
-                                onGuardarFinalizado()
+                                // ACTIVAR DIÁLOGO EN LUGAR DE GUARDAR DIRECTO
+                                mostrarDialogoGuardar = true
                             }
                         }) { Text("Guardar", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) }
                     }
@@ -105,18 +96,16 @@ fun FormularioCategoriaScreen(
                         Text(text = "Código: $codigoActual", color = Color.Gray, fontSize = 12.sp)
                         Spacer(modifier = Modifier.height(8.dp))
                     }
-
-                    // 4. CAMPO DE TEXTO MEJORADO
                     CampoTextoSimple(
                         label = "Nombre",
                         valor = nombre,
                         placeholder = "Ej: Lácteos",
                         enabled = habilitado,
-                        isError = errorNombre != null, // Rojo si hay error
-                        errorText = errorNombre,       // Texto del error
+                        isError = errorNombre != null,
+                        errorText = errorNombre,
                         onChange = {
                             nombre = it
-                            errorNombre = null // Limpiar error al escribir
+                            errorNombre = null
                         }
                     )
                 }
@@ -126,17 +115,12 @@ fun FormularioCategoriaScreen(
                 Spacer(modifier = Modifier.height(24.dp))
                 val estado = catActual!!.estado
 
-                // BOTÓN REACTIVAR / INACTIVAR
                 Button(
                     onClick = {
                         if (estado == "A") {
-                            // REGLA 2: Validar integridad
                             scope.launch {
-                                if (viewModel.puedeInactivarCategoria(idCategoria)) {
-                                    mostrarDialogoInactivar = true
-                                } else {
-                                    snackbarHostState.showSnackbar("Error: Hay proveedores activos usando esta categoría.")
-                                }
+                                if (viewModel.puedeInactivarCategoria(idCategoria)) mostrarDialogoInactivar = true
+                                else snackbarHostState.showSnackbar("Error: Hay proveedores activos usando esta categoría.")
                             }
                         } else {
                             viewModel.reactivarCategoria(catActual!!)
@@ -151,10 +135,8 @@ fun FormularioCategoriaScreen(
                     shape = RoundedCornerShape(8.dp)
                 ) { Text(if (estado == "A") "Inactivar" else "Reactivar") }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // BOTÓN ELIMINAR
                 if (estado == "I") {
+                    Spacer(modifier = Modifier.height(12.dp))
                     Button(
                         onClick = { mostrarDialogoEliminar = true },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFEE2E2), contentColor = Color(0xFF991B1B)),
@@ -164,11 +146,34 @@ fun FormularioCategoriaScreen(
                 }
 
                 // --- DIÁLOGOS ---
+                if (mostrarDialogoGuardar) {
+                    AlertDialog(
+                        onDismissRequest = { mostrarDialogoGuardar = false },
+                        title = { Text("¿Guardar cambios?") },
+                        text = { Text(if (esEdicion) "¿Estás seguro de modificar esta categoría?" else "¿Estás seguro de registrar esta categoría?") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                viewModel.guardarCategoria(
+                                    Categoria(
+                                        id = if (esEdicion) idCategoria else 0,
+                                        codigo = if (esEdicion) codigoActual else "",
+                                        nombre = nombre,
+                                        estado = catActual?.estado ?: "A"
+                                    )
+                                )
+                                mostrarDialogoGuardar = false
+                                onGuardarFinalizado()
+                            }) { Text("Sí, guardar") }
+                        },
+                        dismissButton = { TextButton(onClick = { mostrarDialogoGuardar = false }) { Text("Cancelar") } }
+                    )
+                }
+
                 if (mostrarDialogoInactivar) {
                     AlertDialog(
                         onDismissRequest = { mostrarDialogoInactivar = false },
                         title = { Text("Confirmar Inactivación") },
-                        text = { Text("La categoría dejará de estar disponible para nuevos registros.") },
+                        text = { Text("La categoría dejará de estar disponible.") },
                         confirmButton = {
                             TextButton(onClick = {
                                 viewModel.inactivarCategoria(catActual!!)
@@ -195,6 +200,30 @@ fun FormularioCategoriaScreen(
                         dismissButton = { TextButton(onClick = { mostrarDialogoEliminar = false }) { Text("Cancelar") } }
                     )
                 }
+            }
+
+            // CASO CREAR NUEVO: Diálogo de guardar también debe aparecer aquí
+            if (!esEdicion && mostrarDialogoGuardar) {
+                AlertDialog(
+                    onDismissRequest = { mostrarDialogoGuardar = false },
+                    title = { Text("¿Guardar cambios?") },
+                    text = { Text("¿Estás seguro de registrar esta categoría?") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            viewModel.guardarCategoria(
+                                Categoria(
+                                    id = 0,
+                                    codigo = "",
+                                    nombre = nombre,
+                                    estado = "A"
+                                )
+                            )
+                            mostrarDialogoGuardar = false
+                            onGuardarFinalizado()
+                        }) { Text("Sí, guardar") }
+                    },
+                    dismissButton = { TextButton(onClick = { mostrarDialogoGuardar = false }) { Text("Cancelar") } }
+                )
             }
         }
     }

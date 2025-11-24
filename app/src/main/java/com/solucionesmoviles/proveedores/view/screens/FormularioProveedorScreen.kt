@@ -13,7 +13,7 @@ import com.solucionesmoviles.proveedores.model.Proveedor
 import com.solucionesmoviles.proveedores.viewmodel.ProveedorViewModel
 import com.solucionesmoviles.proveedores.view.components.CampoTextoSimple
 import com.solucionesmoviles.proveedores.view.components.SelectorItem
-import kotlinx.coroutines.launch // Necesario para el Snackbar
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,9 +36,6 @@ fun FormularioProveedorScreen(
     // VARIABLES DE VALIDACIÓN
     var errorNombre by remember { mutableStateOf<String?>(null) }
     var errorRuc by remember { mutableStateOf<String?>(null) }
-
-    // NUEVO: Variable para saber si el usuario ya intentó guardar
-    // Esto sirve para mostrar los errores rojos SOLO después de pulsar el botón
     var intentoGuardar by remember { mutableStateOf(false) }
 
     // VARIABLES DE SELECCIÓN
@@ -56,11 +53,11 @@ fun FormularioProveedorScreen(
     val esEliminado = proveedorActual?.estado == "*"
     val habilitado = !esEliminado
 
-    // ESTADOS DE UI
+    // ESTADOS DE DIÁLOGOS
     var mostrarDialogoInactivar by remember { mutableStateOf(false) }
     var mostrarDialogoEliminar by remember { mutableStateOf(false) }
+    var mostrarDialogoGuardar by remember { mutableStateOf(false) } // <--- NUEVO ESTADO
 
-    // NUEVO: Estado para el mensaje emergente (Snackbar)
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -90,7 +87,7 @@ fun FormularioProveedorScreen(
         return esValido
     }
 
-    // CARGAS INICIALES Y RECUPERACIÓN (Igual que antes)
+    // CARGAS INICIALES
     LaunchedEffect(idProveedor) {
         if (esEdicion) {
             val prov = viewModel.getProveedorById(idProveedor)
@@ -117,6 +114,7 @@ fun FormularioProveedorScreen(
         }
     }
 
+    // RECUPERAR SELECCIONES
     LaunchedEffect(idPaisSeleccionado) {
         if (idPaisSeleccionado != null) {
             selectedPaisId = idPaisSeleccionado
@@ -140,7 +138,7 @@ fun FormularioProveedorScreen(
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }, // NUEVO: Aquí se muestra el mensaje
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text(if (esEdicion) "Editar Proveedor" else "Crear Proveedor", fontWeight = FontWeight.Bold) },
@@ -150,27 +148,14 @@ fun FormularioProveedorScreen(
                 actions = {
                     if (habilitado) {
                         TextButton(onClick = {
-                            // 1. MARCAMOS QUE SE INTENTÓ GUARDAR
                             intentoGuardar = true
-
-                            // 2. VALIDAMOS TODO
                             val formularioValido = validar()
                             val selectoresValidos = selectedPaisId != 0 && selectedCategoriaId != 0 && selectedTipoId != 0
 
                             if (formularioValido && selectoresValidos) {
-                                val nuevoProv = Proveedor(
-                                    id = if (esEdicion) idProveedor else 0,
-                                    nombre = nombre,
-                                    ruc = ruc,
-                                    tipoProveedorId = selectedTipoId,
-                                    paisId = selectedPaisId,
-                                    categoriaId = selectedCategoriaId,
-                                    estado = proveedorActual?.estado ?: "A"
-                                )
-                                viewModel.guardarProveedor(nuevoProv)
-                                onGuardarFinalizado()
+                                // EN LUGAR DE GUARDAR DIRECTO, MOSTRAMOS EL DIÁLOGO
+                                mostrarDialogoGuardar = true
                             } else {
-                                // 3. SI FALLA, MOSTRAMOS EL MENSAJE
                                 scope.launch {
                                     snackbarHostState.showSnackbar("Faltan campos por completar")
                                 }
@@ -237,120 +222,92 @@ fun FormularioProveedorScreen(
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Column {
-                    // SELECTOR TIPO
-                    SelectorItem(
-                        label = "Tipo Prov.",
-                        valor = nombreTipo,
-                        enabled = habilitado,
-                        onClick = onSeleccionarTipo
-                    )
-                    // Mensaje de error si falta seleccionar y ya se intentó guardar
-                    if (intentoGuardar && selectedTipoId == 0) {
-                        Text("Campo obligatorio", color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(start = 16.dp, bottom = 8.dp))
-                    }
-
+                    SelectorItem("Tipo Prov.", nombreTipo, habilitado, onSeleccionarTipo)
+                    if (intentoGuardar && selectedTipoId == 0) Text("Requerido", color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(start = 16.dp))
                     HorizontalDivider(thickness = 0.5.dp, color = Color.Gray)
 
-                    // SELECTOR CATEGORÍA
-                    SelectorItem(
-                        label = "Categoría",
-                        valor = nombreCategoria,
-                        enabled = habilitado,
-                        onClick = onSeleccionarCategoria
-                    )
-                    if (intentoGuardar && selectedCategoriaId == 0) {
-                        Text("Campo obligatorio", color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(start = 16.dp, bottom = 8.dp))
-                    }
-
+                    SelectorItem("Categoría", nombreCategoria, habilitado, onSeleccionarCategoria)
+                    if (intentoGuardar && selectedCategoriaId == 0) Text("Requerido", color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(start = 16.dp))
                     HorizontalDivider(thickness = 0.5.dp, color = Color.Gray)
 
-                    // SELECTOR PAÍS
-                    SelectorItem(
-                        label = "País",
-                        valor = nombrePais,
-                        enabled = habilitado,
-                        onClick = onSeleccionarPais
-                    )
-                    if (intentoGuardar && selectedPaisId == 0) {
-                        Text("Campo obligatorio", color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(start = 16.dp, bottom = 8.dp))
-                    }
+                    SelectorItem("País", nombrePais, habilitado, onSeleccionarPais)
+                    if (intentoGuardar && selectedPaisId == 0) Text("Requerido", color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(start = 16.dp))
                 }
             }
 
-            // GRUPO 3: BOTONES (Solo Edición) - Igual que antes
+            // GRUPO 3: BOTONES
             if (esEdicion && proveedorActual != null) {
                 Spacer(modifier = Modifier.height(32.dp))
                 val estadoActual = proveedorActual!!.estado
 
                 Button(
                     onClick = {
-                        if (estadoActual == "A") {
-                            mostrarDialogoInactivar = true
-                        } else {
-                            viewModel.reactivarProveedor(proveedorActual!!)
-                            onGuardarFinalizado()
-                        }
+                        if (estadoActual == "A") mostrarDialogoInactivar = true
+                        else { viewModel.reactivarProveedor(proveedorActual!!); onGuardarFinalizado() }
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (estadoActual == "A") Color(0xFFFEF3C7) else Color(0xFFDCFCE7),
-                        contentColor = if (estadoActual == "A") Color(0xFFD97706) else Color(0xFF166534)
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = if (estadoActual == "A") Color(0xFFFEF3C7) else Color(0xFFDCFCE7), contentColor = if (estadoActual == "A") Color(0xFFD97706) else Color(0xFF166534)),
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(if (estadoActual == "A") "Inactivar Proveedor" else "Reactivar Proveedor")
-                }
+                ) { Text(if (estadoActual == "A") "Inactivar Proveedor" else "Reactivar Proveedor") }
 
                 if (estadoActual == "I") {
                     Spacer(modifier = Modifier.height(12.dp))
-                    Button(
-                        onClick = { mostrarDialogoEliminar = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFEE2E2), contentColor = Color(0xFF991B1B)),
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text("Eliminar Proveedor")
+                    Button(onClick = { mostrarDialogoEliminar = true }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFEE2E2), contentColor = Color(0xFF991B1B)), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) { Text("Eliminar Proveedor") }
+                }
+            }
+
+            // --- NUEVO DIÁLOGO DE GUARDAR ---
+            if (mostrarDialogoGuardar) {
+                AlertDialog(
+                    onDismissRequest = { mostrarDialogoGuardar = false },
+                    title = { Text("¿Guardar cambios?") },
+                    text = { Text(if (esEdicion) "¿Estás seguro de modificar este proveedor?" else "¿Estás seguro de registrar este nuevo proveedor?") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            // AQUÍ REALMENTE SE GUARDA
+                            val nuevoProv = Proveedor(
+                                id = if (esEdicion) idProveedor else 0,
+                                nombre = nombre,
+                                ruc = ruc,
+                                tipoProveedorId = selectedTipoId,
+                                paisId = selectedPaisId,
+                                categoriaId = selectedCategoriaId,
+                                estado = proveedorActual?.estado ?: "A"
+                            )
+                            viewModel.guardarProveedor(nuevoProv)
+                            mostrarDialogoGuardar = false
+                            onGuardarFinalizado()
+                        }) { Text("Sí, guardar") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { mostrarDialogoGuardar = false }) { Text("Cancelar") }
                     }
-                }
+                )
+            }
 
-                if (mostrarDialogoInactivar) {
-                    AlertDialog(
-                        onDismissRequest = { mostrarDialogoInactivar = false },
-                        title = { Text("¿Inactivar Proveedor?") },
-                        text = { Text("El proveedor dejará de estar disponible para nuevas operaciones.") },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                viewModel.inactivarProveedor(proveedorActual!!)
-                                mostrarDialogoInactivar = false
-                                onGuardarFinalizado()
-                            }) { Text("Sí, inactivar") }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { mostrarDialogoInactivar = false }) { Text("Cancelar") }
-                        }
-                    )
-                }
+            // OTROS DIÁLOGOS
+            if (mostrarDialogoInactivar) {
+                AlertDialog(
+                    onDismissRequest = { mostrarDialogoInactivar = false },
+                    title = { Text("¿Inactivar Proveedor?") },
+                    text = { Text("El proveedor dejará de estar disponible.") },
+                    confirmButton = {
+                        TextButton(onClick = { viewModel.inactivarProveedor(proveedorActual!!); mostrarDialogoInactivar = false; onGuardarFinalizado() }) { Text("Sí, inactivar") }
+                    },
+                    dismissButton = { TextButton(onClick = { mostrarDialogoInactivar = false }) { Text("Cancelar") } }
+                )
+            }
 
-                if (mostrarDialogoEliminar) {
-                    AlertDialog(
-                        onDismissRequest = { mostrarDialogoEliminar = false },
-                        title = { Text("¿Eliminar definitivamente?") },
-                        text = { Text("El registro se marcará como eliminado y se archivará.") },
-                        confirmButton = {
-                            TextButton(
-                                onClick = {
-                                    viewModel.eliminarProveedor(proveedorActual!!)
-                                    mostrarDialogoEliminar = false
-                                    onGuardarFinalizado()
-                                },
-                                colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
-                            ) { Text("Sí, eliminar") }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { mostrarDialogoEliminar = false }) { Text("Cancelar") }
-                        }
-                    )
-                }
+            if (mostrarDialogoEliminar) {
+                AlertDialog(
+                    onDismissRequest = { mostrarDialogoEliminar = false },
+                    title = { Text("¿Eliminar definitivamente?") },
+                    text = { Text("El registro se marcará como eliminado.") },
+                    confirmButton = {
+                        TextButton(onClick = { viewModel.eliminarProveedor(proveedorActual!!); mostrarDialogoEliminar = false; onGuardarFinalizado() }, colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)) { Text("Sí, eliminar") }
+                    },
+                    dismissButton = { TextButton(onClick = { mostrarDialogoEliminar = false }) { Text("Cancelar") } }
+                )
             }
         }
     }

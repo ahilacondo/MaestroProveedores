@@ -11,9 +11,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.solucionesmoviles.proveedores.model.Pais
 import com.solucionesmoviles.proveedores.viewmodel.ProveedorViewModel
-import kotlinx.coroutines.launch
-// IMPORTANTE: Usamos tu componente reutilizable
 import com.solucionesmoviles.proveedores.view.components.CampoTextoSimple
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,20 +27,17 @@ fun FormularioPaisScreen(
     var paisActual by remember { mutableStateOf<Pais?>(null) }
     val esEdicion = idPais != 0
 
-    // 1. ESTADO DE ERROR PARA VALIDACIÓN
     var errorNombre by remember { mutableStateOf<String?>(null) }
 
-    // Estados para alertas y validaciones
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     var mostrarDialogoInactivar by remember { mutableStateOf(false) }
     var mostrarDialogoEliminar by remember { mutableStateOf(false) }
+    var mostrarDialogoGuardar by remember { mutableStateOf(false) } // <--- NUEVO
 
-    // LÓGICA DE BLOQUEO (Read-Only)
     val esEliminado = paisActual?.estado == "*"
     val habilitado = !esEliminado
 
-    // 2. FUNCIÓN DE VALIDACIÓN
     fun validar(): Boolean {
         if (nombre.isBlank()) {
             errorNombre = "El nombre es obligatorio"
@@ -51,7 +47,6 @@ fun FormularioPaisScreen(
             errorNombre = "Mínimo 3 letras"
             return false
         }
-        // Solo letras y espacios (sin números ni símbolos raros)
         if (!nombre.matches(Regex("^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+$"))) {
             errorNombre = "No se permiten números ni símbolos"
             return false
@@ -79,17 +74,8 @@ fun FormularioPaisScreen(
                 actions = {
                     if (habilitado) {
                         TextButton(onClick = {
-                            // 3. VALIDAR ANTES DE GUARDAR
                             if (validar()) {
-                                viewModel.guardarPais(
-                                    Pais(
-                                        id = if (esEdicion) idPais else 0,
-                                        codigo = if (esEdicion) codigoActual else "",
-                                        nombre = nombre,
-                                        estado = paisActual?.estado ?: "A"
-                                    )
-                                )
-                                onGuardarFinalizado()
+                                mostrarDialogoGuardar = true
                             }
                         }) { Text("Guardar", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) }
                     }
@@ -105,18 +91,16 @@ fun FormularioPaisScreen(
                         Text(text = "Código: $codigoActual", color = Color.Gray, fontSize = 12.sp)
                         Spacer(modifier = Modifier.height(8.dp))
                     }
-
-                    // 4. CAMPO DE TEXTO MEJORADO
                     CampoTextoSimple(
                         label = "Nombre",
                         valor = nombre,
                         placeholder = "Ej: Perú",
                         enabled = habilitado,
-                        isError = errorNombre != null, // Rojo si hay error
-                        errorText = errorNombre,       // Texto del error
+                        isError = errorNombre != null,
+                        errorText = errorNombre,
                         onChange = {
                             nombre = it
-                            errorNombre = null // Limpiar error al escribir
+                            errorNombre = null
                         }
                     )
                 }
@@ -126,17 +110,12 @@ fun FormularioPaisScreen(
                 Spacer(modifier = Modifier.height(24.dp))
                 val estado = paisActual!!.estado
 
-                // BOTÓN REACTIVAR / INACTIVAR (Con Validación)
                 Button(
                     onClick = {
                         if (estado == "A") {
-                            // REGLA 2: Validar integridad antes de inactivar
                             scope.launch {
-                                if (viewModel.puedeInactivarPais(idPais)) {
-                                    mostrarDialogoInactivar = true
-                                } else {
-                                    snackbarHostState.showSnackbar("Error: Hay proveedores activos usando este país.")
-                                }
+                                if (viewModel.puedeInactivarPais(idPais)) mostrarDialogoInactivar = true
+                                else snackbarHostState.showSnackbar("Error: Hay proveedores activos usando este país.")
                             }
                         } else {
                             viewModel.reactivarPais(paisActual!!)
@@ -151,10 +130,8 @@ fun FormularioPaisScreen(
                     shape = RoundedCornerShape(8.dp)
                 ) { Text(if (estado == "A") "Inactivar País" else "Reactivar País") }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // BOTÓN ELIMINAR
                 if (estado == "I") {
+                    Spacer(modifier = Modifier.height(12.dp))
                     Button(
                         onClick = { mostrarDialogoEliminar = true },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFEE2E2), contentColor = Color(0xFF991B1B)),
@@ -163,12 +140,35 @@ fun FormularioPaisScreen(
                     ) { Text("Eliminar País") }
                 }
 
-                // --- DIÁLOGOS ---
+                // DIÁLOGOS
+                if (mostrarDialogoGuardar) {
+                    AlertDialog(
+                        onDismissRequest = { mostrarDialogoGuardar = false },
+                        title = { Text("¿Guardar cambios?") },
+                        text = { Text(if (esEdicion) "¿Estás seguro de modificar este país?" else "¿Estás seguro de registrar este país?") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                viewModel.guardarPais(
+                                    Pais(
+                                        id = if (esEdicion) idPais else 0,
+                                        codigo = if (esEdicion) codigoActual else "",
+                                        nombre = nombre,
+                                        estado = paisActual?.estado ?: "A"
+                                    )
+                                )
+                                mostrarDialogoGuardar = false
+                                onGuardarFinalizado()
+                            }) { Text("Sí, guardar") }
+                        },
+                        dismissButton = { TextButton(onClick = { mostrarDialogoGuardar = false }) { Text("Cancelar") } }
+                    )
+                }
+
                 if (mostrarDialogoInactivar) {
                     AlertDialog(
                         onDismissRequest = { mostrarDialogoInactivar = false },
                         title = { Text("Confirmar Inactivación") },
-                        text = { Text("El país dejará de aparecer en los selectores de nuevos proveedores.") },
+                        text = { Text("El país dejará de aparecer en los selectores.") },
                         confirmButton = {
                             TextButton(onClick = {
                                 viewModel.inactivarPais(paisActual!!)
@@ -195,6 +195,25 @@ fun FormularioPaisScreen(
                         dismissButton = { TextButton(onClick = { mostrarDialogoEliminar = false }) { Text("Cancelar") } }
                     )
                 }
+            }
+
+            // DIÁLOGO CREAR (Si no es edición)
+            if (!esEdicion && mostrarDialogoGuardar) {
+                AlertDialog(
+                    onDismissRequest = { mostrarDialogoGuardar = false },
+                    title = { Text("¿Guardar cambios?") },
+                    text = { Text("¿Estás seguro de registrar este país?") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            viewModel.guardarPais(
+                                Pais(id = 0, codigo = "", nombre = nombre, estado = "A")
+                            )
+                            mostrarDialogoGuardar = false
+                            onGuardarFinalizado()
+                        }) { Text("Sí, guardar") }
+                    },
+                    dismissButton = { TextButton(onClick = { mostrarDialogoGuardar = false }) { Text("Cancelar") } }
+                )
             }
         }
     }
